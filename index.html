@@ -585,9 +585,7 @@ document.getElementById('btn-add').onclick=addTask;
 document.getElementById('new-task').onkeydown=function(e){if(e.key==='Enter')addTask();};
 
 setSyncStatus(isOnline?'online':'offline');
-supa.from('quests').select('*').then(r=>{
-  document.title='S:'+r.status+' E:'+(r.error?r.error.message:'none');
-});
+document.title = typeof supabase !== 'undefined' ? 'LIB:OK' : 'LIB:MISSING';
 </script>
 </body>
 </html>
