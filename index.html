@@ -585,7 +585,7 @@ document.getElementById('btn-add').onclick=addTask;
 document.getElementById('new-task').onkeydown=function(e){if(e.key==='Enter')addTask();};
 
 setSyncStatus(isOnline?'online':'offline');
-document.title = typeof supa !== 'undefined' ? 'SUPA:OK' : 'SUPA:MISSING';
+supa.auth.getSession().then(r=>{ document.title = r.data.session ? 'SESSION:OK uid:'+r.data.session.user.id.slice(0,8) : 'SESSION:NULL'; });
 </script>
 </body>
 </html>
