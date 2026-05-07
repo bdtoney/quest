@@ -2,14 +2,41 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quest! — Prioritized Task Queue</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Quest!">
+<meta name="theme-color" content="#7F77DD">
+<title>Quest!</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f9f9f8;color:#1a1a1a;min-height:100vh}
-#app{padding:1.5rem;max-width:600px;margin:0 auto}
-h1{font-size:22px;font-weight:500;color:#7F77DD;margin-bottom:1.5rem;letter-spacing:-0.5px}
+#auth-screen{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;max-width:400px;margin:0 auto}
+#auth-screen h1{font-size:48px;font-weight:900;color:#7F77DD;margin-bottom:.25rem;letter-spacing:-2px}
+#auth-screen p{font-size:14px;color:#aaa;margin-bottom:2rem}
+.auth-input{width:100%;padding:10px 14px;font-size:15px;border:0.5px solid rgba(0,0,0,0.15);border-radius:8px;background:#fff;color:#1a1a1a;margin-bottom:10px;font-family:inherit}
+.auth-input:focus{outline:none;border-color:#7F77DD}
+.auth-btn{width:100%;padding:12px;font-size:15px;font-weight:600;background:#7F77DD;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;margin-bottom:8px}
+.auth-btn:hover{background:#534AB7}
+.auth-btn.secondary{background:transparent;color:#7F77DD;border:0.5px solid #AFA9EC}
+.auth-btn.secondary:hover{background:#EEEDFE}
+#auth-msg{font-size:13px;color:#888;text-align:center;margin-top:8px;min-height:20px}
+#auth-msg.error{color:#e24b4a}
+#auth-msg.success{color:#22a06b}
+#app{padding:1.5rem;max-width:600px;margin:0 auto;display:none}
+#sync-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+#sync-bar h1{font-size:22px;font-weight:500;color:#7F77DD;letter-spacing:-0.5px}
+#sync-right{display:flex;align-items:center;gap:12px}
+#sync-status{font-size:12px;color:#bbb;display:flex;align-items:center;gap:5px}
+#sync-dot{width:7px;height:7px;border-radius:50%;background:#bbb;flex-shrink:0;transition:background .3s}
+#sync-dot.online{background:#22a06b}
+#sync-dot.offline{background:#f5a623}
+#sync-dot.syncing{background:#7F77DD;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+#signout-btn{font-size:12px;color:#bbb;background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:6px}
+#signout-btn:hover{background:#f0f0f0;color:#666}
 #xp-meta{display:flex;justify-content:space-between;font-size:13px;color:#888;margin-bottom:6px}
 #xp-bar-bg{height:8px;background:#eee;border-radius:4px;overflow:hidden;margin-bottom:1.5rem}
 #xp-bar-fill{height:100%;background:#7F77DD;border-radius:4px;transition:width 0.4s ease}
@@ -82,18 +109,34 @@ h1{font-size:22px;font-weight:500;color:#7F77DD;margin-bottom:1.5rem;letter-spac
   .sq-cancel-btn,.action-btn,.icon-btn,.add-sq-btn{color:#aaa;border-color:rgba(255,255,255,0.15)}
   .sq-cancel-btn:hover,.action-btn:hover,.icon-btn:hover{background:#2e2c2a}
   .att-block{background:#2e2c2a;border-color:rgba(255,255,255,0.08)}
-  .att-text{color:#aaa}
-  .peek-t{color:#aaa}
-  .peek-d,.peek-n{color:#666}
-  .peek-sub-lbl{color:#666}
+  .att-text{color:#aaa}.peek-t{color:#aaa}.peek-d,.peek-n{color:#666}.peek-sub-lbl{color:#666}
   #mini-cel{background:#2e2a4e;color:#AFA9EC}
   #xp-bar-bg{background:#2e2c2a}
+  .auth-input{background:#242320;color:#e8e6e0;border-color:rgba(255,255,255,0.12)}
+  #signout-btn:hover{background:#2e2c2a;color:#aaa}
 }
 </style>
 </head>
 <body>
+
+<div id="auth-screen">
+  <h1>Q!</h1>
+  <p>Your prioritized task queue</p>
+  <input id="auth-email" class="auth-input" type="email" placeholder="Email address" autocomplete="email" />
+  <input id="auth-password" class="auth-input" type="password" placeholder="Password" autocomplete="current-password" />
+  <button class="auth-btn" id="signin-btn">Sign in</button>
+  <button class="auth-btn secondary" id="signup-btn">Create account</button>
+  <div id="auth-msg"></div>
+</div>
+
 <div id="app">
-  <h1>Quest!</h1>
+  <div id="sync-bar">
+    <h1>Quest!</h1>
+    <div id="sync-right">
+      <div id="sync-status"><div id="sync-dot"></div><span id="sync-text">...</span></div>
+      <button id="signout-btn">Sign out</button>
+    </div>
+  </div>
   <div id="xp-meta"><span id="xp-left">0 XP</span><span id="lvl-right">LVL 1</span></div>
   <div id="xp-bar-bg"><div id="xp-bar-fill" style="width:0%"></div></div>
   <div id="mini-cel"></div>
@@ -116,13 +159,19 @@ h1{font-size:22px;font-weight:500;color:#7F77DD;margin-bottom:1.5rem;letter-spac
 </div>
 
 <script>
-const STORE='ptq-tasks',STORE_XP='ptq-xp',STORE_LVL='ptq-lvl',ORDER_KEY='ptq-order',DONE_KEY='ptq-done';
+const SUPA_URL='https://himgzvlazranikukuztq.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpbWd6dmxhenJhbmlrdWt1enRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNTgwMDksImV4cCI6MjA5MzczNDAwOX0.LcBiSIkHUH8HamG1H0Yap4D-Sw1_olQvJgAQsr4Hv8s';
+const supa=supabase.createClient(SUPA_URL,SUPA_KEY);
+
+const STORE='ptq-tasks',STORE_XP='ptq-xp',STORE_LVL='ptq-lvl',ORDER_KEY='ptq-order',DONE_KEY='ptq-done',DIRTY_KEY='ptq-dirty';
 let tasks=JSON.parse(localStorage.getItem(STORE)||'[]');
 tasks.forEach(t=>{if(!t.notes)t.notes=[];if(!t.links)t.links=[];});
 let xp=parseInt(localStorage.getItem(STORE_XP)||'0');
 let lvl=parseInt(localStorage.getItem(STORE_LVL)||'1');
 let manualOrder=JSON.parse(localStorage.getItem(ORDER_KEY)||'null');
 let completed=JSON.parse(localStorage.getItem(DONE_KEY)||'[]');
+let dirtyIds=new Set(JSON.parse(localStorage.getItem(DIRTY_KEY)||'[]'));
+let currentUser=null,isOnline=navigator.onLine;
 let openSQ={},editingTask=null,editingSub={},dragSrcId=null,openPanel={},peekExpanded=true;
 
 const EMOJIS=['🥳','🙌','🎊','🥇','💪','🎉','👏','🏆'];
@@ -131,13 +180,102 @@ const celebAdd=["Quest unlocked! +10 XP","Challenge logged! +10 XP","Idea captur
 const celebSQ=["Side quest added! +10 XP","Side quest unlocked! +10 XP","Step logged! +10 XP"];
 const celebSQDone=["Side quest done! +20 XP","Side quest slain! +20 XP","Step conquered! +20 XP"];
 
-function save(){
+function saveLocal(){
   localStorage.setItem(STORE,JSON.stringify(tasks));
   localStorage.setItem(STORE_XP,String(xp));
   localStorage.setItem(STORE_LVL,String(lvl));
   localStorage.setItem(ORDER_KEY,JSON.stringify(manualOrder||[]));
   localStorage.setItem(DONE_KEY,JSON.stringify(completed));
+  localStorage.setItem(DIRTY_KEY,JSON.stringify([...dirtyIds]));
 }
+
+async function syncToCloud(taskId){
+  if(!currentUser||!isOnline)return;
+  const t=tasks.find(t=>t.id===taskId);
+  if(!t){
+    await supa.from('quests').delete().eq('id',taskId).eq('user_id',currentUser.id);
+    dirtyIds.delete(taskId);saveLocal();return;
+  }
+  const{error}=await supa.from('quests').upsert({id:taskId,user_id:currentUser.id,data:t,updated_at:new Date().toISOString()});
+  if(!error){dirtyIds.delete(taskId);saveLocal();}
+}
+
+async function syncAllDirty(){
+  if(!currentUser||!isOnline||dirtyIds.size===0)return;
+  setSyncStatus('syncing');
+  for(const id of [...dirtyIds])await syncToCloud(id);
+  setSyncStatus('online');
+}
+
+async function loadFromCloud(){
+  if(!currentUser||!isOnline)return;
+  setSyncStatus('syncing');
+  const{data,error}=await supa.from('quests').select('*').eq('user_id',currentUser.id);
+  if(error){setSyncStatus('offline');return;}
+  if(data&&data.length>0){
+    tasks=data.map(row=>({...row.data,notes:row.data.notes||[],links:row.data.links||[]}));
+    saveLocal();
+  }
+  setSyncStatus('online');
+  render();
+}
+
+function save(taskId){
+  saveLocal();
+  if(taskId){dirtyIds.add(taskId);localStorage.setItem(DIRTY_KEY,JSON.stringify([...dirtyIds]));if(isOnline&&currentUser)syncToCloud(taskId);}
+}
+
+function setSyncStatus(state){
+  const dot=document.getElementById('sync-dot');
+  const txt=document.getElementById('sync-text');
+  if(!dot||!txt)return;
+  dot.className='';
+  if(state==='online'){dot.classList.add('online');txt.textContent='Synced';}
+  else if(state==='offline'){dot.classList.add('offline');txt.textContent='Offline';}
+  else{dot.classList.add('syncing');txt.textContent='Syncing...';}
+}
+
+window.addEventListener('online',()=>{isOnline=true;syncAllDirty().then(()=>loadFromCloud());});
+window.addEventListener('offline',()=>{isOnline=false;setSyncStatus('offline');});
+
+function showAuth(){document.getElementById('auth-screen').style.display='flex';document.getElementById('app').style.display='none';}
+function showApp(){document.getElementById('auth-screen').style.display='none';document.getElementById('app').style.display='block';}
+function setAuthMsg(msg,type){const el=document.getElementById('auth-msg');el.textContent=msg;el.className=type||'';}
+
+document.getElementById('signin-btn').onclick=async()=>{
+  const email=document.getElementById('auth-email').value.trim();
+  const password=document.getElementById('auth-password').value;
+  if(!email||!password){setAuthMsg('Please enter your email and password.','error');return;}
+  setAuthMsg('Signing in...');
+  const{error}=await supa.auth.signInWithPassword({email,password});
+  if(error)setAuthMsg(error.message,'error');
+};
+
+document.getElementById('signup-btn').onclick=async()=>{
+  const email=document.getElementById('auth-email').value.trim();
+  const password=document.getElementById('auth-password').value;
+  if(!email||!password){setAuthMsg('Please enter an email and password.','error');return;}
+  if(password.length<6){setAuthMsg('Password must be at least 6 characters.','error');return;}
+  setAuthMsg('Creating account...');
+  const{error}=await supa.auth.signUp({email,password});
+  if(error)setAuthMsg(error.message,'error');
+  else setAuthMsg('Check your email to confirm your account, then sign in.','success');
+};
+
+document.getElementById('signout-btn').onclick=async()=>{await supa.auth.signOut();currentUser=null;showAuth();};
+
+supa.auth.onAuthStateChange(async(event,session)=>{
+  if(session?.user){
+    currentUser=session.user;
+    showApp();
+    setSyncStatus(isOnline?'syncing':'offline');
+    if(isOnline){await loadFromCloud();syncAllDirty();}
+    else render();
+  } else {
+    showAuth();
+  }
+});
+
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
 function getActiveSub(t){
   if(!t.subs||!t.subs.length)return null;
@@ -155,8 +293,7 @@ function getOrder(){
   if(!manualOrder||!manualOrder.length){manualOrder=[...ids];return manualOrder;}
   const filtered=manualOrder.filter(id=>ids.includes(id));
   const newIds=ids.filter(id=>!filtered.includes(id));
-  manualOrder=[...filtered,...newIds];
-  return manualOrder;
+  manualOrder=[...filtered,...newIds];return manualOrder;
 }
 function sorted(){return getOrder().map(id=>tasks.find(t=>t.id===id)).filter(Boolean);}
 function fmtDue(d){
@@ -174,7 +311,7 @@ function showMini(msg,dur){
 }
 function gainXP(n){
   xp+=n;if(xp>=100){xp-=100;lvl++;showMini('LEVEL UP! Now LVL '+lvl,2200);}
-  updateBar();save();
+  updateBar();saveLocal();
 }
 function updateBar(){
   document.getElementById('xp-left').textContent=xp+' XP';
@@ -208,7 +345,7 @@ function makeAttPanel(t){
     const br=document.createElement('div');br.className='inline-form-btns';
     const s=document.createElement('button');s.className='sq-save-btn';s.textContent='Save note';
     const c=document.createElement('button');c.className='sq-cancel-btn';c.textContent='Cancel';
-    s.onclick=()=>{const v=ta.value.trim();if(!v)return;t.notes.push({id:uid(),text:v});openPanel[t.id]=null;save();gainXP(10);render();showMini('Note saved! +10 XP');};
+    s.onclick=()=>{const v=ta.value.trim();if(!v)return;t.notes.push({id:uid(),text:v});openPanel[t.id]=null;save(t.id);gainXP(10);render();showMini('Note saved! +10 XP');};
     c.onclick=(()=>{const id=t.id;return()=>{openPanel[id]=null;render();};})();
     br.appendChild(s);br.appendChild(c);form.appendChild(ta);form.appendChild(br);wrap.appendChild(form);
     setTimeout(()=>ta.focus(),50);
@@ -220,7 +357,7 @@ function makeAttPanel(t){
     const br=document.createElement('div');br.className='inline-form-btns';
     const s=document.createElement('button');s.className='sq-save-btn';s.textContent='Save link';
     const c=document.createElement('button');c.className='sq-cancel-btn';c.textContent='Cancel';
-    s.onclick=()=>{let url=ui.value.trim();if(!url)return;if(!/^https?:\/\//i.test(url))url='https://'+url;t.links.push({id:uid(),url,label:li.value.trim()||url});openPanel[t.id]=null;save();gainXP(10);render();showMini('Link saved! +10 XP');};
+    s.onclick=()=>{let url=ui.value.trim();if(!url)return;if(!/^https?:\/\//i.test(url))url='https://'+url;t.links.push({id:uid(),url,label:li.value.trim()||url});openPanel[t.id]=null;save(t.id);gainXP(10);render();showMini('Link saved! +10 XP');};
     c.onclick=(()=>{const id=t.id;return()=>{openPanel[id]=null;render();};})();
     ui.onkeydown=e=>{if(e.key==='Enter')s.onclick();};
     br.appendChild(s);br.appendChild(c);form.appendChild(ui);form.appendChild(li);form.appendChild(br);wrap.appendChild(form);
@@ -234,7 +371,7 @@ function makeAttPanel(t){
       const icon=document.createElement('i');icon.className='ti ti-note';icon.style.cssText='font-size:14px;color:#bbb;flex-shrink:0;margin-top:1px';
       const lbl=document.createElement('span');lbl.className='att-text';lbl.textContent=n.text;
       const del=document.createElement('button');del.className='att-del';del.innerHTML='<i class="ti ti-x"></i>';
-      del.onclick=(()=>{const nid=n.id,tid=t.id;return()=>{const tk=tasks.find(x=>x.id===tid);if(tk)tk.notes=tk.notes.filter(x=>x.id!==nid);save();render();};})();
+      del.onclick=(()=>{const nid=n.id,tid=t.id;return()=>{const tk=tasks.find(x=>x.id===tid);if(tk)tk.notes=tk.notes.filter(x=>x.id!==nid);save(tid);render();};})();
       row.appendChild(icon);row.appendChild(lbl);row.appendChild(del);block.appendChild(row);
     });
     (t.links||[]).forEach(l=>{
@@ -242,7 +379,7 @@ function makeAttPanel(t){
       const icon=document.createElement('i');icon.className='ti ti-link';icon.style.cssText='font-size:14px;color:#bbb;flex-shrink:0;margin-top:1px';
       const a=document.createElement('a');a.className='att-link';a.href=l.url;a.textContent=l.label;a.target='_blank';
       const del=document.createElement('button');del.className='att-del';del.innerHTML='<i class="ti ti-x"></i>';
-      del.onclick=(()=>{const lid=l.id,tid=t.id;return()=>{const tk=tasks.find(x=>x.id===tid);if(tk)tk.links=tk.links.filter(x=>x.id!==lid);save();render();};})();
+      del.onclick=(()=>{const lid=l.id,tid=t.id;return()=>{const tk=tasks.find(x=>x.id===tid);if(tk)tk.links=tk.links.filter(x=>x.id!==lid);save(tid);render();};})();
       row.appendChild(icon);row.appendChild(a);row.appendChild(del);block.appendChild(row);
     });
     wrap.appendChild(block);
@@ -293,7 +430,7 @@ function renderActive(top){
     eqb.onclick=(()=>{const id=top.id;return()=>{editingTask=id;render();};})();
     questCtx.appendChild(qName);questCtx.appendChild(eqb);card.appendChild(questCtx);
     if(editingSub[top.id]===activeSubIdx){
-      card.appendChild(makeEditInput(activeSub.text,(val)=>{activeSub.text=val;delete editingSub[top.id];save();render();},()=>{delete editingSub[top.id];render();},true));
+      card.appendChild(makeEditInput(activeSub.text,(val)=>{activeSub.text=val;delete editingSub[top.id];save(top.id);render();},()=>{delete editingSub[top.id];render();},true));
     } else {
       const subRow=document.createElement('div');subRow.style.cssText='display:flex;align-items:flex-start;gap:6px;margin-bottom:.3rem';
       const subName=document.createElement('div');subName.style.cssText='font-size:21px;font-weight:500;color:#1a1a1a;line-height:1.3;flex:1';subName.textContent=activeSub.text;
@@ -304,14 +441,14 @@ function renderActive(top){
     const due=document.createElement('div');due.style.cssText='font-size:13px;color:#888;margin-bottom:.75rem';due.textContent=fmtDue(top.due);card.appendChild(due);
     card.appendChild(makeAttPanel(top));card.appendChild(makeSQWidget(top.id,'active'));
     const row1=document.createElement('div');row1.style.cssText='display:flex;gap:10px;margin-top:1rem';
-    row1.appendChild(makeBtn('Side quest done',()=>{top.subs[activeSubIdx].done=true;save();gainXP(20);showMini(celebSQDone[Math.floor(Math.random()*celebSQDone.length)]);render();},btnStyle));
-    row1.appendChild(makeBtn('Skip side quest',()=>{skipSub(top,activeSubIdx);save();showMini('Side quest skipped');render();},skipStyle));
+    row1.appendChild(makeBtn('Side quest done',()=>{top.subs[activeSubIdx].done=true;save(top.id);gainXP(20);showMini(celebSQDone[Math.floor(Math.random()*celebSQDone.length)]);render();},btnStyle));
+    row1.appendChild(makeBtn('Skip side quest',()=>{skipSub(top,activeSubIdx);save(top.id);showMini('Side quest skipped');render();},skipStyle));
     card.appendChild(row1);
     const row2=document.createElement('div');row2.style.cssText='display:flex;gap:10px;margin-top:8px';
     row2.appendChild(makeBtn('Skip whole quest',skipTop,skipStyle));card.appendChild(row2);
   } else {
     if(editingTask===top.id){
-      card.appendChild(makeEditInput(top.text,(val)=>{top.text=val;editingTask=null;save();render();},()=>{editingTask=null;render();},true));
+      card.appendChild(makeEditInput(top.text,(val)=>{top.text=val;editingTask=null;save(top.id);render();},()=>{editingTask=null;render();},true));
     } else {
       const nameRow=document.createElement('div');nameRow.style.cssText='display:flex;align-items:flex-start;gap:6px;margin-bottom:.3rem';
       const name=document.createElement('div');name.style.cssText='font-size:21px;font-weight:500;color:#1a1a1a;line-height:1.3;flex:1';name.textContent=top.text;
@@ -345,12 +482,12 @@ function renderPeek(rest){
       const order=getOrder();const fromIdx=order.indexOf(dragSrcId);const toIdx=order.indexOf(t.id);
       if(fromIdx<1||toIdx<1)return;
       order.splice(fromIdx,1);order.splice(toIdx,0,dragSrcId);
-      manualOrder=[...order];save();render();
+      manualOrder=[...order];saveLocal();render();
     });
     const header=document.createElement('div');header.className='peek-header-row';
     const handle=document.createElement('i');handle.className='ti ti-grip-vertical drag-handle';
     if(editingTask===t.id){
-      card.appendChild(makeEditInput(t.text,(val)=>{t.text=val;editingTask=null;save();render();},()=>{editingTask=null;render();},false));
+      card.appendChild(makeEditInput(t.text,(val)=>{t.text=val;editingTask=null;save(t.id);render();},()=>{editingTask=null;render();},false));
     } else {
       const n=document.createElement('span');n.className='peek-n';n.textContent=i+2;
       const ts=document.createElement('span');ts.className='peek-t';ts.textContent=t.text;
@@ -366,7 +503,7 @@ function renderPeek(rest){
         const s=t.subs[j];if(!s)return;
         const row=document.createElement('div');row.className='peek-sub-row';
         if(editingSub[t.id]===j){
-          row.appendChild(makeEditInput(s.text,(val)=>{s.text=val;delete editingSub[t.id];save();render();},()=>{delete editingSub[t.id];render();},false));
+          row.appendChild(makeEditInput(s.text,(val)=>{s.text=val;delete editingSub[t.id];save(t.id);render();},()=>{delete editingSub[t.id];render();},false));
         } else {
           const dot=document.createElement('div');dot.className='peek-sub-dot';if(s.done)dot.style.background='#7F77DD';
           const lbl=document.createElement('span');lbl.className='peek-sub-lbl'+(s.done?' done':'');lbl.textContent=s.text;
@@ -392,6 +529,7 @@ function renderPeek(rest){
 }
 function updateToggleBtn(){
   const icon=document.getElementById('peek-icon');const lbl=document.getElementById('peek-toggle-label');
+  if(!icon||!lbl)return;
   if(peekExpanded){icon.className='ti ti-chevron-up';lbl.textContent='Collapse';}
   else{icon.className='ti ti-chevron-down';lbl.textContent='Expand';}
 }
@@ -418,31 +556,35 @@ function submitSQ(taskId,inputId){
   const t=tasks.find(t=>t.id===taskId);if(!t)return;
   if(!t.subs)t.subs=[];if(!t.subOrder)t.subOrder=t.subs.map((_,i)=>i);
   t.subs.push({text:txt,done:false});t.subOrder.push(t.subs.length-1);
-  openSQ[taskId]=false;save();gainXP(10);render();showMini(celebSQ[Math.floor(Math.random()*celebSQ.length)]);
+  openSQ[taskId]=false;save(taskId);gainXP(10);render();showMini(celebSQ[Math.floor(Math.random()*celebSQ.length)]);
 }
 function completeTop(){
   const s=sorted();if(!s.length)return;
   const top=s[0];completed.push({text:top.text,id:top.id});
-  manualOrder=manualOrder.filter(id=>id!==top.id);tasks=tasks.filter(t=>t.id!==top.id);
+  manualOrder=manualOrder.filter(id=>id!==top.id);
+  dirtyIds.add(top.id);
+  tasks=tasks.filter(t=>t.id!==top.id);
   delete openSQ[top.id];delete editingSub[top.id];delete openPanel[top.id];
-  save();gainXP(30);showMini(celebDone[Math.floor(Math.random()*celebDone.length)],1800);setTimeout(render,200);
+  save(top.id);gainXP(30);showMini(celebDone[Math.floor(Math.random()*celebDone.length)],1800);setTimeout(render,200);
 }
 function skipTop(){
   const s=sorted();if(!s.length)return;
   const topId=s[0].id;const idx=manualOrder.indexOf(topId);
   if(idx>-1){manualOrder.splice(idx,1);manualOrder.push(topId);}
-  openSQ[topId]=false;save();render();showMini('Skipped — moved to back');
+  openSQ[topId]=false;saveLocal();render();showMini('Skipped — moved to back');
 }
 function addTask(){
   const inp=document.getElementById('new-task');const txt=inp.value.trim();if(!txt)return;
   const t={id:uid(),text:txt,due:'',subs:[],skipped:0,notes:[],links:[]};
   tasks.push(t);if(!manualOrder)manualOrder=[];manualOrder.push(t.id);
-  inp.value='';save();gainXP(10);render();showMini(celebAdd[Math.floor(Math.random()*celebAdd.length)]);
+  inp.value='';save(t.id);gainXP(10);render();showMini(celebAdd[Math.floor(Math.random()*celebAdd.length)]);
 }
+
 document.getElementById('peek-toggle').onclick=function(){peekExpanded=!peekExpanded;render();};
 document.getElementById('btn-add').onclick=addTask;
 document.getElementById('new-task').onkeydown=function(e){if(e.key==='Enter')addTask();};
-render();
+
+setSyncStatus(isOnline?'online':'offline');
 </script>
 </body>
 </html>
