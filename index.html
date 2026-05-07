@@ -221,6 +221,22 @@ async function apiDeleteQuest(taskId){
   if(!r.ok)throw new Error('Delete failed: '+r.status);
 }
 
+async function apiLoadUserData(){
+  const r=await fetch(BASE+'/rest/v1/user_data?user_id=eq.'+currentUser.id+'&select=*',{headers:authHeaders()});
+  if(!r.ok)throw new Error('Load user data failed: '+r.status);
+  const d=await r.json();
+  return d&&d.length>0?d[0]:null;
+}
+
+async function apiSaveUserData(){
+  const r=await fetch(BASE+'/rest/v1/user_data',{
+    method:'POST',
+    headers:{...authHeaders(),'Prefer':'resolution=merge-duplicates'},
+    body:JSON.stringify({user_id:currentUser.id,xp,lvl,completed,updated_at:new Date().toISOString()})
+  });
+  if(!r.ok){const t=await r.text();throw new Error('Save user data failed: '+r.status+' '+t);}
+}
+
 // ── Local state ─────────────────────────────────────────────────────────────
 const STORE='ptq-tasks',STORE_XP='ptq-xp',STORE_LVL='ptq-lvl',ORDER_KEY='ptq-order',DONE_KEY='ptq-done',DIRTY_KEY='ptq-dirty',SESSION_KEY='ptq-session';
 
@@ -301,11 +317,16 @@ async function loadFromCloud(){
   if(!currentUser||!isOnline)return;
   setSyncStatus('syncing');
   try{
-    const rows=await apiLoadQuests();
+    const [rows,userData]=await Promise.all([apiLoadQuests(),apiLoadUserData()]);
     if(rows&&rows.length>0){
       tasks=rows.map(row=>({...row.data,notes:row.data.notes||[],links:row.data.links||[]}));
-      saveLocal();
     }
+    if(userData){
+      xp=userData.xp||0;
+      lvl=userData.lvl||1;
+      completed=userData.completed||[];
+    }
+    saveLocal();
     setSyncStatus('online');
     render();
   }catch(e){
@@ -417,6 +438,7 @@ function showMini(msg,dur){
 function gainXP(n){
   xp+=n;if(xp>=100){xp-=100;lvl++;showMini('LEVEL UP! Now LVL '+lvl,2200);}
   updateBar();saveLocal();
+  if(currentUser&&isOnline)apiSaveUserData().catch(e=>console.warn('gainXP sync error:',e.message));
 }
 function updateBar(){
   document.getElementById('xp-left').textContent=xp+' XP';
@@ -670,7 +692,7 @@ function completeTop(){
   dirtyIds.add(top.id);
   tasks=tasks.filter(t=>t.id!==top.id);
   delete openSQ[top.id];delete editingSub[top.id];delete openPanel[top.id];
-  save(top.id);gainXP(30);showMini(celebDone[Math.floor(Math.random()*celebDone.length)],1800);setTimeout(render,200);
+  saveLocal();gainXP(30);if(currentUser&&isOnline)apiSaveUserData().catch(e=>console.warn('completeTop sync:',e.message));showMini(celebDone[Math.floor(Math.random()*celebDone.length)],1800);setTimeout(()=>{syncToCloud(top.id);render();},200);
 }
 function skipTop(){
   const s=sorted();if(!s.length)return;
