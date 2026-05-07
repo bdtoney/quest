@@ -127,9 +127,9 @@ let openSQ={},editingTask=null,editingSub={},dragSrcId=null,openPanel={},peekExp
 
 const EMOJIS=['🥳','🙌','🎊','🥇','💪','🎉','👏','🏆'];
 const celebDone=["Quest complete! +30 XP","Victory! +30 XP","Conquered! +30 XP","Legendary! +30 XP"];
-const celebAdd=["Quest unlocked!","Challenge logged!","Idea captured!","Quest accepted!"];
-const celebSQ=["Side quest added!","Side quest unlocked!","Step logged!"];
-const celebSQDone=["Side quest done! +10 XP","Side quest slain! +10 XP","Step conquered! +10 XP"];
+const celebAdd=["Quest unlocked! +10 XP","Challenge logged! +10 XP","Idea captured! +10 XP","Quest accepted! +10 XP"];
+const celebSQ=["Side quest added! +10 XP","Side quest unlocked! +10 XP","Step logged! +10 XP"];
+const celebSQDone=["Side quest done! +20 XP","Side quest slain! +20 XP","Step conquered! +20 XP"];
 
 function save(){
   localStorage.setItem(STORE,JSON.stringify(tasks));
@@ -208,7 +208,7 @@ function makeAttPanel(t){
     const br=document.createElement('div');br.className='inline-form-btns';
     const s=document.createElement('button');s.className='sq-save-btn';s.textContent='Save note';
     const c=document.createElement('button');c.className='sq-cancel-btn';c.textContent='Cancel';
-    s.onclick=()=>{const v=ta.value.trim();if(!v)return;t.notes.push({id:uid(),text:v});openPanel[t.id]=null;save();render();showMini('Note saved!');};
+    s.onclick=()=>{const v=ta.value.trim();if(!v)return;t.notes.push({id:uid(),text:v});openPanel[t.id]=null;save();gainXP(10);render();showMini('Note saved! +10 XP');};
     c.onclick=(()=>{const id=t.id;return()=>{openPanel[id]=null;render();};})();
     br.appendChild(s);br.appendChild(c);form.appendChild(ta);form.appendChild(br);wrap.appendChild(form);
     setTimeout(()=>ta.focus(),50);
@@ -220,7 +220,7 @@ function makeAttPanel(t){
     const br=document.createElement('div');br.className='inline-form-btns';
     const s=document.createElement('button');s.className='sq-save-btn';s.textContent='Save link';
     const c=document.createElement('button');c.className='sq-cancel-btn';c.textContent='Cancel';
-    s.onclick=()=>{let url=ui.value.trim();if(!url)return;if(!/^https?:\/\//i.test(url))url='https://'+url;t.links.push({id:uid(),url,label:li.value.trim()||url});openPanel[t.id]=null;save();render();showMini('Link saved!');};
+    s.onclick=()=>{let url=ui.value.trim();if(!url)return;if(!/^https?:\/\//i.test(url))url='https://'+url;t.links.push({id:uid(),url,label:li.value.trim()||url});openPanel[t.id]=null;save();gainXP(10);render();showMini('Link saved! +10 XP');};
     c.onclick=(()=>{const id=t.id;return()=>{openPanel[id]=null;render();};})();
     ui.onkeydown=e=>{if(e.key==='Enter')s.onclick();};
     br.appendChild(s);br.appendChild(c);form.appendChild(ui);form.appendChild(li);form.appendChild(br);wrap.appendChild(form);
@@ -304,7 +304,7 @@ function renderActive(top){
     const due=document.createElement('div');due.style.cssText='font-size:13px;color:#888;margin-bottom:.75rem';due.textContent=fmtDue(top.due);card.appendChild(due);
     card.appendChild(makeAttPanel(top));card.appendChild(makeSQWidget(top.id,'active'));
     const row1=document.createElement('div');row1.style.cssText='display:flex;gap:10px;margin-top:1rem';
-    row1.appendChild(makeBtn('Side quest done',()=>{top.subs[activeSubIdx].done=true;save();gainXP(10);showMini(celebSQDone[Math.floor(Math.random()*celebSQDone.length)]);render();},btnStyle));
+    row1.appendChild(makeBtn('Side quest done',()=>{top.subs[activeSubIdx].done=true;save();gainXP(20);showMini(celebSQDone[Math.floor(Math.random()*celebSQDone.length)]);render();},btnStyle));
     row1.appendChild(makeBtn('Skip side quest',()=>{skipSub(top,activeSubIdx);save();showMini('Side quest skipped');render();},skipStyle));
     card.appendChild(row1);
     const row2=document.createElement('div');row2.style.cssText='display:flex;gap:10px;margin-top:8px';
@@ -418,7 +418,7 @@ function submitSQ(taskId,inputId){
   const t=tasks.find(t=>t.id===taskId);if(!t)return;
   if(!t.subs)t.subs=[];if(!t.subOrder)t.subOrder=t.subs.map((_,i)=>i);
   t.subs.push({text:txt,done:false});t.subOrder.push(t.subs.length-1);
-  openSQ[taskId]=false;save();render();showMini(celebSQ[Math.floor(Math.random()*celebSQ.length)]);
+  openSQ[taskId]=false;save();gainXP(10);render();showMini(celebSQ[Math.floor(Math.random()*celebSQ.length)]);
 }
 function completeTop(){
   const s=sorted();if(!s.length)return;
@@ -437,7 +437,7 @@ function addTask(){
   const inp=document.getElementById('new-task');const txt=inp.value.trim();if(!txt)return;
   const t={id:uid(),text:txt,due:'',subs:[],skipped:0,notes:[],links:[]};
   tasks.push(t);if(!manualOrder)manualOrder=[];manualOrder.push(t.id);
-  inp.value='';save();render();showMini(celebAdd[Math.floor(Math.random()*celebAdd.length)]);
+  inp.value='';save();gainXP(10);render();showMini(celebAdd[Math.floor(Math.random()*celebAdd.length)]);
 }
 document.getElementById('peek-toggle').onclick=function(){peekExpanded=!peekExpanded;render();};
 document.getElementById('btn-add').onclick=addTask;
