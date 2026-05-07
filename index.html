@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Quest!">
 <meta name="theme-color" content="#7F77DD">
 <title>Quest!</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f9f9f8;color:#1a1a1a;min-height:100vh}
@@ -122,8 +122,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <div id="auth-screen">
   <h1>Q!</h1>
   <p>Your prioritized task queue</p>
-  <input id="auth-email" class="auth-input" type="email" placeholder="Email address" autocomplete="email" />
-  <input id="auth-password" class="auth-input" type="password" placeholder="Password" autocomplete="current-password" />
+  <input id="auth-email" class="auth-input" type="email" placeholder="Email address" autocomplete="email"/>
+  <input id="auth-password" class="auth-input" type="password" placeholder="Password" autocomplete="current-password"/>
   <button class="auth-btn" id="signin-btn">Sign in</button>
   <button class="auth-btn secondary" id="signup-btn">Create account</button>
   <div id="auth-msg"></div>
@@ -149,7 +149,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div id="peek-items"></div>
   </div>
   <div id="add-row">
-    <input id="new-task" placeholder="Next quest..." />
+    <input id="new-task" placeholder="Next quest..."/>
     <button id="btn-add"><span>Q</span></button>
   </div>
   <div id="done-section" style="display:none">
@@ -159,11 +159,71 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 </div>
 
 <script>
-const SUPA_URL='https://himgzvlazranikukuztq.supabase.co';
-const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpbWd6dmxhenJhbmlrdWt1enRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNTgwMDksImV4cCI6MjA5MzczNDAwOX0.LcBiSIkHUH8HamG1H0Yap4D-Sw1_olQvJgAQsr4Hv8s';
-const supa=supabase.createClient(SUPA_URL,SUPA_KEY);
+// ── Supabase REST API (no library — direct fetch) ───────────────────────────
+const BASE='https://himgzvlazranikukuztq.supabase.co';
+const ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpbWd6dmxhenJhbmlrdWt1enRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNTgwMDksImV4cCI6MjA5MzczNDAwOX0.LcBiSIkHUH8HamG1H0Yap4D-Sw1_olQvJgAQsr4Hv8s';
 
-const STORE='ptq-tasks',STORE_XP='ptq-xp',STORE_LVL='ptq-lvl',ORDER_KEY='ptq-order',DONE_KEY='ptq-done',DIRTY_KEY='ptq-dirty';
+let accessToken=null;
+let currentUser=null;
+
+function authHeaders(){
+  return{
+    'Content-Type':'application/json',
+    'apikey':ANON,
+    'Authorization':'Bearer '+(accessToken||ANON)
+  };
+}
+
+async function apiSignIn(email,password){
+  const r=await fetch(BASE+'/auth/v1/token?grant_type=password',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':ANON},
+    body:JSON.stringify({email,password})
+  });
+  const d=await r.json();
+  if(!r.ok)throw new Error(d.error_description||d.msg||'Sign in failed');
+  return d;
+}
+
+async function apiSignUp(email,password){
+  const r=await fetch(BASE+'/auth/v1/signup',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':ANON},
+    body:JSON.stringify({email,password})
+  });
+  const d=await r.json();
+  if(!r.ok)throw new Error(d.error_description||d.msg||'Sign up failed');
+  return d;
+}
+
+async function apiLoadQuests(){
+  const r=await fetch(BASE+'/rest/v1/quests?user_id=eq.'+currentUser.id+'&select=*',{
+    headers:authHeaders()
+  });
+  if(!r.ok)throw new Error('Load failed: '+r.status);
+  return await r.json();
+}
+
+async function apiUpsertQuest(taskId,taskData){
+  const r=await fetch(BASE+'/rest/v1/quests',{
+    method:'POST',
+    headers:{...authHeaders(),'Prefer':'resolution=merge-duplicates'},
+    body:JSON.stringify({id:taskId,user_id:currentUser.id,data:taskData,updated_at:new Date().toISOString()})
+  });
+  if(!r.ok){const t=await r.text();throw new Error('Upsert failed: '+r.status+' '+t);}
+}
+
+async function apiDeleteQuest(taskId){
+  const r=await fetch(BASE+'/rest/v1/quests?id=eq.'+taskId+'&user_id=eq.'+currentUser.id,{
+    method:'DELETE',
+    headers:authHeaders()
+  });
+  if(!r.ok)throw new Error('Delete failed: '+r.status);
+}
+
+// ── Local state ─────────────────────────────────────────────────────────────
+const STORE='ptq-tasks',STORE_XP='ptq-xp',STORE_LVL='ptq-lvl',ORDER_KEY='ptq-order',DONE_KEY='ptq-done',DIRTY_KEY='ptq-dirty',SESSION_KEY='ptq-session';
+
 let tasks=JSON.parse(localStorage.getItem(STORE)||'[]');
 tasks.forEach(t=>{if(!t.notes)t.notes=[];if(!t.links)t.links=[];});
 let xp=parseInt(localStorage.getItem(STORE_XP)||'0');
@@ -171,7 +231,7 @@ let lvl=parseInt(localStorage.getItem(STORE_LVL)||'1');
 let manualOrder=JSON.parse(localStorage.getItem(ORDER_KEY)||'null');
 let completed=JSON.parse(localStorage.getItem(DONE_KEY)||'[]');
 let dirtyIds=new Set(JSON.parse(localStorage.getItem(DIRTY_KEY)||'[]'));
-let currentUser=null,isOnline=navigator.onLine;
+let isOnline=navigator.onLine;
 let openSQ={},editingTask=null,editingSub={},dragSrcId=null,openPanel={},peekExpanded=true;
 
 const EMOJIS=['🥳','🙌','🎊','🥇','💪','🎉','👏','🏆'];
@@ -189,15 +249,45 @@ function saveLocal(){
   localStorage.setItem(DIRTY_KEY,JSON.stringify([...dirtyIds]));
 }
 
+function saveSession(session){
+  if(session){
+    localStorage.setItem(SESSION_KEY,JSON.stringify({
+      access_token:session.access_token,
+      user:session.user
+    }));
+  } else {
+    localStorage.removeItem(SESSION_KEY);
+  }
+}
+
+function loadSession(){
+  try{
+    const s=localStorage.getItem(SESSION_KEY);
+    if(s){
+      const parsed=JSON.parse(s);
+      accessToken=parsed.access_token;
+      currentUser=parsed.user;
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
+// ── Sync ─────────────────────────────────────────────────────────────────────
 async function syncToCloud(taskId){
   if(!currentUser||!isOnline)return;
-  const t=tasks.find(t=>t.id===taskId);
-  if(!t){
-    await supa.from('quests').delete().eq('id',taskId).eq('user_id',currentUser.id);
-    dirtyIds.delete(taskId);saveLocal();return;
+  try{
+    const t=tasks.find(t=>t.id===taskId);
+    if(!t){
+      await apiDeleteQuest(taskId);
+    } else {
+      await apiUpsertQuest(taskId,t);
+    }
+    dirtyIds.delete(taskId);
+    saveLocal();
+  }catch(e){
+    console.warn('syncToCloud error:',e.message);
   }
-  const{error}=await supa.from('quests').upsert({id:taskId,user_id:currentUser.id,data:t,updated_at:new Date().toISOString()});
-  if(!error){dirtyIds.delete(taskId);saveLocal();}
 }
 
 async function syncAllDirty(){
@@ -210,19 +300,27 @@ async function syncAllDirty(){
 async function loadFromCloud(){
   if(!currentUser||!isOnline)return;
   setSyncStatus('syncing');
-  const{data,error}=await supa.from('quests').select('*').eq('user_id',currentUser.id);
-  if(error){setSyncStatus('offline');return;}
-  if(data&&data.length>0){
-    tasks=data.map(row=>({...row.data,notes:row.data.notes||[],links:row.data.links||[]}));
-    saveLocal();
+  try{
+    const rows=await apiLoadQuests();
+    if(rows&&rows.length>0){
+      tasks=rows.map(row=>({...row.data,notes:row.data.notes||[],links:row.data.links||[]}));
+      saveLocal();
+    }
+    setSyncStatus('online');
+    render();
+  }catch(e){
+    console.warn('loadFromCloud error:',e.message);
+    setSyncStatus('offline');
   }
-  setSyncStatus('online');
-  render();
 }
 
 function save(taskId){
   saveLocal();
-  if(taskId){dirtyIds.add(taskId);localStorage.setItem(DIRTY_KEY,JSON.stringify([...dirtyIds]));if(isOnline&&currentUser)syncToCloud(taskId);}
+  if(taskId){
+    dirtyIds.add(taskId);
+    localStorage.setItem(DIRTY_KEY,JSON.stringify([...dirtyIds]));
+    if(isOnline&&currentUser)syncToCloud(taskId);
+  }
 }
 
 function setSyncStatus(state){
@@ -238,44 +336,51 @@ function setSyncStatus(state){
 window.addEventListener('online',()=>{isOnline=true;syncAllDirty().then(()=>loadFromCloud());});
 window.addEventListener('offline',()=>{isOnline=false;setSyncStatus('offline');});
 
+// ── Auth UI ──────────────────────────────────────────────────────────────────
 function showAuth(){document.getElementById('auth-screen').style.display='flex';document.getElementById('app').style.display='none';}
 function showApp(){document.getElementById('auth-screen').style.display='none';document.getElementById('app').style.display='block';}
 function setAuthMsg(msg,type){const el=document.getElementById('auth-msg');el.textContent=msg;el.className=type||'';}
 
-document.getElementById('signin-btn').onclick=async()=>{
+document.getElementById('signin-btn').onclick=async function(){
   const email=document.getElementById('auth-email').value.trim();
   const password=document.getElementById('auth-password').value;
   if(!email||!password){setAuthMsg('Please enter your email and password.','error');return;}
   setAuthMsg('Signing in...');
-  const{error}=await supa.auth.signInWithPassword({email,password});
-  if(error)setAuthMsg(error.message,'error');
+  try{
+    const session=await apiSignIn(email,password);
+    accessToken=session.access_token;
+    currentUser=session.user;
+    saveSession(session);
+    showApp();
+    setSyncStatus(isOnline?'syncing':'offline');
+    if(isOnline){await loadFromCloud();syncAllDirty();}
+    else render();
+  }catch(e){
+    setAuthMsg(e.message,'error');
+  }
 };
 
-document.getElementById('signup-btn').onclick=async()=>{
+document.getElementById('signup-btn').onclick=async function(){
   const email=document.getElementById('auth-email').value.trim();
   const password=document.getElementById('auth-password').value;
   if(!email||!password){setAuthMsg('Please enter an email and password.','error');return;}
   if(password.length<6){setAuthMsg('Password must be at least 6 characters.','error');return;}
   setAuthMsg('Creating account...');
-  const{error}=await supa.auth.signUp({email,password});
-  if(error)setAuthMsg(error.message,'error');
-  else setAuthMsg('Check your email to confirm your account, then sign in.','success');
+  try{
+    await apiSignUp(email,password);
+    setAuthMsg('Account created! You can sign in now.','success');
+  }catch(e){
+    setAuthMsg(e.message,'error');
+  }
 };
 
-document.getElementById('signout-btn').onclick=async()=>{await supa.auth.signOut();currentUser=null;showAuth();};
+document.getElementById('signout-btn').onclick=function(){
+  accessToken=null;currentUser=null;
+  saveSession(null);
+  showAuth();
+};
 
-supa.auth.onAuthStateChange(async(event,session)=>{
-  if(session?.user){
-    currentUser=session.user;
-    showApp();
-    setSyncStatus(isOnline?'syncing':'offline');
-    if(isOnline){await loadFromCloud();syncAllDirty();}
-    else render();
-  } else {
-    showAuth();
-  }
-});
-
+// ── App logic ────────────────────────────────────────────────────────────────
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
 function getActiveSub(t){
   if(!t.subs||!t.subs.length)return null;
@@ -584,19 +689,19 @@ document.getElementById('peek-toggle').onclick=function(){peekExpanded=!peekExpa
 document.getElementById('btn-add').onclick=addTask;
 document.getElementById('new-task').onkeydown=function(e){if(e.key==='Enter')addTask();};
 
-setSyncStatus(isOnline?'online':'offline');
-supa.auth.getSession().then(({data:{session}})=>{
-  if(session){
-    currentUser=session.user;
-    showApp();
-    setSyncStatus(isOnline?'syncing':'offline');
-    if(isOnline){loadFromCloud().then(()=>syncAllDirty());}
-    else render();
+// ── Init: restore session from localStorage ──────────────────────────────────
+setSyncStatus(isOnline?'offline':'offline');
+if(loadSession()){
+  showApp();
+  setSyncStatus(isOnline?'syncing':'offline');
+  if(isOnline){
+    loadFromCloud().then(()=>syncAllDirty());
   } else {
-    showAuth();
+    render();
   }
-});
-supa.auth.getSession().then(r=>{ document.title = r.data.session ? 'SESSION:OK uid:'+r.data.session.user.id.slice(0,8) : 'SESSION:NULL'; });
+} else {
+  showAuth();
+}
 </script>
 </body>
 </html>
