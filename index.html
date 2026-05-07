@@ -385,8 +385,8 @@ function renderPeek(rest){
       (t.links||[]).forEach(l=>{const p=document.createElement('span');p.style.cssText='font-size:11px;color:#534AB7;background:#EEEDFE;border:0.5px solid #AFA9EC;border-radius:8px;padding:2px 7px';p.textContent=l.label.length>22?l.label.slice(0,22)+'...':l.label;pills.appendChild(p);});
       card.appendChild(pills);
     }
-    card.appendChild(makeSQWidget(t.id,'peek'+i));
     card.appendChild(makeAttPanel(t));
+    card.appendChild(makeSQWidget(t.id,'peek'+i));
     peek.appendChild(card);
   });
 }
