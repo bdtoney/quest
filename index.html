@@ -232,7 +232,7 @@ async function apiSaveUserData(){
   const r=await fetch(BASE+'/rest/v1/user_data',{
     method:'POST',
     headers:{...authHeaders(),'Prefer':'resolution=merge-duplicates'},
-    body:JSON.stringify({user_id:currentUser.id,xp,lvl,completed,updated_at:new Date().toISOString()})
+    body:JSON.stringify({user_id:currentUser.id,xp,lvl,completed,manual_order:manualOrder||[],updated_at:new Date().toISOString()})
   });
   if(!r.ok){const t=await r.text();throw new Error('Save user data failed: '+r.status+' '+t);}
 }
@@ -322,9 +322,23 @@ async function loadFromCloud(){
       tasks=rows.map(row=>({...row.data,notes:row.data.notes||[],links:row.data.links||[]}));
     }
     if(userData){
-      xp=userData.xp||0;
-      lvl=userData.lvl||1;
-      completed=userData.completed||[];
+      // Always take the higher XP value to avoid losing progress
+      const cloudXP=(userData.lvl||1)*100+(userData.xp||0);
+      const localXP=lvl*100+xp;
+      if(cloudXP>localXP){
+        xp=userData.xp||0;
+        lvl=userData.lvl||1;
+      }
+      // Merge completed: combine both lists, deduplicate by id
+      const cloudCompleted=userData.completed||[];
+      const localIds=new Set(completed.map(c=>c.id));
+      const merged=[...completed];
+      cloudCompleted.forEach(c=>{if(c.id&&!localIds.has(c.id))merged.push(c);});
+      completed=merged;
+      // Use cloud order if we don't have a local one
+      if((!manualOrder||manualOrder.length===0)&&userData.manual_order&&userData.manual_order.length>0){
+        manualOrder=userData.manual_order;
+      }
     }
     saveLocal();
     setSyncStatus('online');
@@ -609,8 +623,33 @@ function renderPeek(rest){
       const order=getOrder();const fromIdx=order.indexOf(dragSrcId);const toIdx=order.indexOf(t.id);
       if(fromIdx<1||toIdx<1)return;
       order.splice(fromIdx,1);order.splice(toIdx,0,dragSrcId);
-      manualOrder=[...order];saveLocal();render();
+      manualOrder=[...order];saveLocal();if(currentUser&&isOnline)apiSaveUserData().catch(e=>console.warn('order sync:',e.message));render();
     });
+    // Touch drag for iOS
+    let touchStartY=0,touchSrcId=null;
+    card.addEventListener('touchstart',e=>{touchStartY=e.touches[0].clientY;touchSrcId=t.id;card.classList.add('dragging');},{passive:true});
+    card.addEventListener('touchend',e=>{
+      card.classList.remove('dragging');document.querySelectorAll('.peek-card').forEach(c=>c.classList.remove('drag-over'));
+      if(!touchSrcId)return;
+      const touch=e.changedTouches[0];
+      const el=document.elementFromPoint(touch.clientX,touch.clientY);
+      const target=el?el.closest('.peek-card'):null;
+      if(!target||target===card){touchSrcId=null;return;}
+      const targetId=target.dataset.id;
+      if(!targetId||targetId===touchSrcId){touchSrcId=null;return;}
+      const order=getOrder();const fromIdx=order.indexOf(touchSrcId);const toIdx=order.indexOf(targetId);
+      if(fromIdx<1||toIdx<1){touchSrcId=null;return;}
+      order.splice(fromIdx,1);order.splice(toIdx,0,touchSrcId);
+      manualOrder=[...order];saveLocal();if(currentUser&&isOnline)apiSaveUserData().catch(e=>console.warn('touch order sync:',e.message));render();
+      touchSrcId=null;
+    });
+    card.addEventListener('touchmove',e=>{
+      const touch=e.touches[0];
+      const el=document.elementFromPoint(touch.clientX,touch.clientY);
+      const target=el?el.closest('.peek-card'):null;
+      document.querySelectorAll('.peek-card').forEach(c=>c.classList.remove('drag-over'));
+      if(target&&target!==card)target.classList.add('drag-over');
+    },{passive:true});
     const header=document.createElement('div');header.className='peek-header-row';
     const handle=document.createElement('i');handle.className='ti ti-grip-vertical drag-handle';
     if(editingTask===t.id){
@@ -698,7 +737,7 @@ function skipTop(){
   const s=sorted();if(!s.length)return;
   const topId=s[0].id;const idx=manualOrder.indexOf(topId);
   if(idx>-1){manualOrder.splice(idx,1);manualOrder.push(topId);}
-  openSQ[topId]=false;saveLocal();render();showMini('Skipped — moved to back');
+  openSQ[topId]=false;saveLocal();if(currentUser&&isOnline)apiSaveUserData().catch(e=>console.warn('skip sync:',e.message));render();showMini('Skipped — moved to back');
 }
 function addTask(){
   const inp=document.getElementById('new-task');const txt=inp.value.trim();if(!txt)return;
