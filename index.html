@@ -248,7 +248,7 @@ let manualOrder=JSON.parse(localStorage.getItem(ORDER_KEY)||'null');
 let completed=JSON.parse(localStorage.getItem(DONE_KEY)||'[]');
 let dirtyIds=new Set(JSON.parse(localStorage.getItem(DIRTY_KEY)||'[]'));
 let isOnline=navigator.onLine;
-let openSQ={},editingTask=null,editingSub={},dragSrcId=null,openPanel={},peekExpanded=true;
+let openSQ={},editingTask=null,editingSub={},dragSrcId=null,openPanel={},peekExpanded=true,touchDragSrc=null,touchDragTarget=null;
 
 const EMOJIS=['🥳','🙌','🎊','🥇','💪','🎉','👏','🏆'];
 const celebDone=["Quest complete! +30 XP","Victory! +30 XP","Conquered! +30 XP","Legendary! +30 XP"];
@@ -335,9 +335,16 @@ async function loadFromCloud(){
       const merged=[...completed];
       cloudCompleted.forEach(c=>{if(c.id&&!localIds.has(c.id))merged.push(c);});
       completed=merged;
-      // Use cloud order if we don't have a local one
-      if((!manualOrder||manualOrder.length===0)&&userData.manual_order&&userData.manual_order.length>0){
-        manualOrder=userData.manual_order;
+      // Sync order: prefer cloud order, but only if it references the same task IDs
+      if(userData.manual_order&&userData.manual_order.length>0){
+        const cloudIds=new Set(userData.manual_order);
+        const localIds=new Set((manualOrder||[]).filter(id=>tasks.find(t=>t.id===id)));
+        // Use cloud order if it has more coverage of current tasks
+        const cloudCoverage=[...cloudIds].filter(id=>tasks.find(t=>t.id===id)).length;
+        const localCoverage=[...(manualOrder||[])].filter(id=>tasks.find(t=>t.id===id)).length;
+        if(cloudCoverage>=localCoverage){
+          manualOrder=userData.manual_order;
+        }
       }
     }
     saveLocal();
@@ -625,31 +632,39 @@ function renderPeek(rest){
       order.splice(fromIdx,1);order.splice(toIdx,0,dragSrcId);
       manualOrder=[...order];saveLocal();if(currentUser&&isOnline)apiSaveUserData().catch(e=>console.warn('order sync:',e.message));render();
     });
-    // Touch drag for iOS
-    let touchStartY=0,touchSrcId=null;
-    card.addEventListener('touchstart',e=>{touchStartY=e.touches[0].clientY;touchSrcId=t.id;card.classList.add('dragging');},{passive:true});
-    card.addEventListener('touchend',e=>{
-      card.classList.remove('dragging');document.querySelectorAll('.peek-card').forEach(c=>c.classList.remove('drag-over'));
-      if(!touchSrcId)return;
-      const touch=e.changedTouches[0];
-      const el=document.elementFromPoint(touch.clientX,touch.clientY);
-      const target=el?el.closest('.peek-card'):null;
-      if(!target||target===card){touchSrcId=null;return;}
-      const targetId=target.dataset.id;
-      if(!targetId||targetId===touchSrcId){touchSrcId=null;return;}
-      const order=getOrder();const fromIdx=order.indexOf(touchSrcId);const toIdx=order.indexOf(targetId);
-      if(fromIdx<1||toIdx<1){touchSrcId=null;return;}
-      order.splice(fromIdx,1);order.splice(toIdx,0,touchSrcId);
-      manualOrder=[...order];saveLocal();if(currentUser&&isOnline)apiSaveUserData().catch(e=>console.warn('touch order sync:',e.message));render();
-      touchSrcId=null;
-    });
+    // Touch drag for iOS — track hover target during move
+    card.addEventListener('touchstart',e=>{
+      touchDragSrc=t.id;
+      card.classList.add('dragging');
+    },{passive:true});
     card.addEventListener('touchmove',e=>{
+      e.preventDefault();
       const touch=e.touches[0];
+      // Temporarily hide the dragging card so elementFromPoint finds the card underneath
+      card.style.pointerEvents='none';
       const el=document.elementFromPoint(touch.clientX,touch.clientY);
+      card.style.pointerEvents='';
       const target=el?el.closest('.peek-card'):null;
       document.querySelectorAll('.peek-card').forEach(c=>c.classList.remove('drag-over'));
-      if(target&&target!==card)target.classList.add('drag-over');
-    },{passive:true});
+      if(target&&target!==card){target.classList.add('drag-over');touchDragTarget=target.dataset.id;}
+      else{touchDragTarget=null;}
+    },{passive:false});
+    card.addEventListener('touchend',()=>{
+      card.classList.remove('dragging');
+      document.querySelectorAll('.peek-card').forEach(c=>c.classList.remove('drag-over'));
+      if(touchDragSrc&&touchDragTarget&&touchDragSrc!==touchDragTarget){
+        const order=getOrder();
+        const fromIdx=order.indexOf(touchDragSrc);
+        const toIdx=order.indexOf(touchDragTarget);
+        if(fromIdx>0&&toIdx>0){
+          order.splice(fromIdx,1);order.splice(toIdx,0,touchDragSrc);
+          manualOrder=[...order];saveLocal();
+          if(currentUser&&isOnline)apiSaveUserData().catch(e=>console.warn('touch order sync:',e.message));
+          render();
+        }
+      }
+      touchDragSrc=null;touchDragTarget=null;
+    });
     const header=document.createElement('div');header.className='peek-header-row';
     const handle=document.createElement('i');handle.className='ti ti-grip-vertical drag-handle';
     if(editingTask===t.id){
