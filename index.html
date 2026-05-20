@@ -94,8 +94,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 #btn-add:hover{background:#534AB7}
 #btn-add:active{transform:scale(0.93)}
 #btn-add span{font-size:80px;font-weight:900;line-height:1;color:#F5C400;pointer-events:none;user-select:none;display:block}
-#done-section{margin-top:1.5rem;border-top:0.5px solid rgba(0,0,0,0.1);padding-top:1rem}
-#done-label{font-size:12px;color:#bbb;margin-bottom:8px;letter-spacing:.06em;text-transform:uppercase}
+#done-recent,#done-earlier{border-top:0.5px solid rgba(0,0,0,0.1);padding-top:1rem;margin-top:1rem}
+.done-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.done-label{font-size:12px;color:#bbb;letter-spacing:.06em;text-transform:uppercase}
+.done-toggle{background:none;border:none;cursor:pointer;font-size:12px;color:#bbb;display:flex;align-items:center;gap:4px;padding:2px 6px;border-radius:8px}
+.done-toggle:hover{background:#f5f5f4;color:#666}
 .done-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid rgba(0,0,0,0.06)}
 .done-row:last-child{border-bottom:none}
 .done-emoji{font-size:16px;flex-shrink:0}
@@ -141,6 +144,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div id="xp-bar-bg"><div id="xp-bar-fill" style="width:0%"></div></div>
   <div id="mini-cel"></div>
   <div id="active-card"></div>
+  <div id="done-recent" style="display:none">
+    <div class="done-header">
+      <span class="done-label">Completed Recently</span>
+      <button class="done-toggle" id="done-recent-toggle"><i class="ti ti-chevron-up" id="done-recent-icon"></i><span id="done-recent-label">Collapse</span></button>
+    </div>
+    <div id="done-recent-list"></div>
+  </div>
   <div id="peek-section">
     <div id="peek-header">
       <span id="peek-label">Coming up — drag to reorder</span>
@@ -148,15 +158,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     </div>
     <div id="peek-items"></div>
   </div>
+  <div id="done-earlier" style="display:none">
+    <div class="done-header">
+      <span class="done-label">Completed Earlier</span>
+      <button class="done-toggle" id="done-earlier-toggle"><i class="ti ti-chevron-up" id="done-earlier-icon"></i><span id="done-earlier-label">Collapse</span></button>
+    </div>
+    <div id="done-earlier-list"></div>
+  </div>
   <div id="add-row">
     <input id="new-task" placeholder="Next quest..."/>
     <button id="btn-add"><span>Q</span></button>
-  </div>
-  <div id="done-section" style="display:none">
-    <div id="done-label">Completed today</div>
-    <div id="done-list"></div>
-  </div>
-</div>
+  </div></div>
 
 <script>
 // ── Supabase REST API (no library — direct fetch) ───────────────────────────
@@ -723,16 +735,53 @@ function updateToggleBtn(){
   if(peekExpanded){icon.className='ti ti-chevron-up';lbl.textContent='Collapse';}
   else{icon.className='ti ti-chevron-down';lbl.textContent='Expand';}
 }
+let doneRecentExpanded=true,doneEarlierExpanded=true;
+
 function renderDone(){
-  const sec=document.getElementById('done-section');const list=document.getElementById('done-list');list.innerHTML='';
-  if(!completed.length){sec.style.display='none';return;}
-  sec.style.display='block';
-  completed.forEach((item,i)=>{
-    const row=document.createElement('div');row.className='done-row';
-    const emoji=document.createElement('span');emoji.className='done-emoji';emoji.textContent=EMOJIS[i%EMOJIS.length];
-    const text=document.createElement('span');text.className='done-text';text.textContent=item.text;
-    row.appendChild(emoji);row.appendChild(text);list.appendChild(row);
-  });
+  const recent=completed.slice(-8).reverse();
+  const earlier=completed.slice(0,-8).reverse();
+
+  // Completed Recently
+  const recentSec=document.getElementById('done-recent');
+  const recentList=document.getElementById('done-recent-list');
+  recentList.innerHTML='';
+  if(!recent.length){recentSec.style.display='none';}
+  else{
+    recentSec.style.display='block';
+    const icon=document.getElementById('done-recent-icon');
+    const lbl=document.getElementById('done-recent-label');
+    if(icon){icon.className=doneRecentExpanded?'ti ti-chevron-up':'ti ti-chevron-down';}
+    if(lbl){lbl.textContent=doneRecentExpanded?'Collapse':'Expand';}
+    if(doneRecentExpanded){
+      recent.forEach((item,i)=>{
+        const row=document.createElement('div');row.className='done-row';
+        const emoji=document.createElement('span');emoji.className='done-emoji';emoji.textContent=EMOJIS[i%EMOJIS.length];
+        const text=document.createElement('span');text.className='done-text';text.textContent=item.text;
+        row.appendChild(emoji);row.appendChild(text);recentList.appendChild(row);
+      });
+    }
+  }
+
+  // Completed Earlier
+  const earlierSec=document.getElementById('done-earlier');
+  const earlierList=document.getElementById('done-earlier-list');
+  earlierList.innerHTML='';
+  if(!earlier.length){earlierSec.style.display='none';}
+  else{
+    earlierSec.style.display='block';
+    const icon=document.getElementById('done-earlier-icon');
+    const lbl=document.getElementById('done-earlier-label');
+    if(icon){icon.className=doneEarlierExpanded?'ti ti-chevron-up':'ti ti-chevron-down';}
+    if(lbl){lbl.textContent=doneEarlierExpanded?'Collapse':'Expand';}
+    if(doneEarlierExpanded){
+      earlier.forEach((item,i)=>{
+        const row=document.createElement('div');row.className='done-row';
+        const emoji=document.createElement('span');emoji.className='done-emoji';emoji.textContent=EMOJIS[i%EMOJIS.length];
+        const text=document.createElement('span');text.className='done-text';text.textContent=item.text;
+        row.appendChild(emoji);row.appendChild(text);earlierList.appendChild(row);
+      });
+    }
+  }
 }
 function render(){
   updateBar();const s=sorted();
@@ -773,6 +822,9 @@ function addTask(){
 document.getElementById('peek-toggle').onclick=function(){peekExpanded=!peekExpanded;render();};
 document.getElementById('btn-add').onclick=addTask;
 document.getElementById('new-task').onkeydown=function(e){if(e.key==='Enter')addTask();};
+
+document.getElementById('done-recent-toggle').onclick=function(){doneRecentExpanded=!doneRecentExpanded;renderDone();};
+document.getElementById('done-earlier-toggle').onclick=function(){doneEarlierExpanded=!doneEarlierExpanded;renderDone();};
 
 // ── Init: restore session from localStorage ──────────────────────────────────
 setSyncStatus(isOnline?'offline':'offline');
