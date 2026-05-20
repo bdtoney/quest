@@ -760,11 +760,15 @@ function renderPeek(rest){
       card.appendChild(pills);
     }
     card.appendChild(makeAttPanel(t));
-    card.appendChild(makeSQWidget(t.id,'peek'+i));
+    const btnRow=document.createElement('div');btnRow.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-top:6px';
+    const sqWidget=makeSQWidget(t.id,'peek'+i);
+    sqWidget.style.marginTop='0';
     const moveLaterBtn=document.createElement('button');moveLaterBtn.className='move-btn';
+    moveLaterBtn.style.marginTop='0';moveLaterBtn.style.marginLeft='auto';
     moveLaterBtn.innerHTML='<i class="ti ti-arrow-down" style="font-size:12px"></i>Move to LATER';
     moveLaterBtn.onclick=(()=>{const tid=t.id;return()=>{moveToLater(tid);};})();
-    card.appendChild(moveLaterBtn);
+    btnRow.appendChild(sqWidget);btnRow.appendChild(moveLaterBtn);
+    card.appendChild(btnRow);
     peek.appendChild(card);
   });
 }
@@ -857,6 +861,7 @@ function renderLater(){
       row.appendChild(text);row.appendChild(editBtn);card.appendChild(row);
     }
     const moveNextBtn=document.createElement('button');moveNextBtn.className='move-btn';
+    moveNextBtn.style.marginTop='6px';moveNextBtn.style.marginLeft='auto';
     moveNextBtn.innerHTML='<i class="ti ti-arrow-up" style="font-size:12px"></i>Move to NEXT';
     moveNextBtn.onclick=(()=>{const id=t.id;return()=>{moveToNext(id);};})();
     card.appendChild(moveNextBtn);
