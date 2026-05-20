@@ -347,6 +347,15 @@ async function loadFromCloud(){
         }
       }
     }
+    // Clean up: remove any tasks that are already in completed list
+    const completedIds=new Set(completed.map(c=>c.id));
+    const dirtyFromCleanup=tasks.filter(t=>completedIds.has(t.id)).map(t=>t.id);
+    tasks=tasks.filter(t=>!completedIds.has(t.id));
+    if(manualOrder)manualOrder=manualOrder.filter(id=>!completedIds.has(id));
+    // Delete orphaned tasks from cloud
+    dirtyFromCleanup.forEach(id=>{
+      if(currentUser&&isOnline)apiDeleteQuest(id).catch(e=>console.warn('cleanup delete:',e.message));
+    });
     saveLocal();
     setSyncStatus('online');
     render();
