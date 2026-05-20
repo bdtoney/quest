@@ -99,6 +99,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .done-label{font-size:12px;color:#bbb;letter-spacing:.06em;text-transform:uppercase}
 .done-toggle{background:none;border:none;cursor:pointer;font-size:12px;color:#bbb;display:flex;align-items:center;gap:4px;padding:2px 6px;border-radius:8px}
 .done-toggle:hover{background:#f5f5f4;color:#666}
+#later-section{margin-top:1.5rem;border-top:0.5px solid rgba(0,0,0,0.1);padding-top:1rem}
+#later-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+#later-label{font-size:12px;color:#aaa;letter-spacing:.06em;font-weight:600}
+#later-toggle{background:none;border:none;cursor:pointer;font-size:12px;color:#aaa;display:flex;align-items:center;gap:4px;padding:2px 6px;border-radius:8px}
+#later-toggle:hover{background:#f5f5f4;color:#666}
+.later-card{background:#fff;border:0.5px solid rgba(0,0,0,0.08);border-radius:8px;padding:10px 14px;margin-bottom:6px}
+.later-text{font-size:14px;color:#888;flex:1}
+.later-row{display:flex;align-items:center;gap:8px}
+.move-btn{margin-top:6px;padding:4px 10px;font-size:12px;color:#7F77DD;background:transparent;border:0.5px solid #AFA9EC;border-radius:8px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px}
+.move-btn:hover{background:#EEEDFE}
+#later-add-row{margin-top:8px}
+#later-task{width:100%;padding:8px 12px;font-size:14px;border:0.5px solid rgba(0,0,0,0.12);border-radius:8px;background:#f9f9f8;color:#1a1a1a;font-family:inherit}
+#later-task:focus{outline:none;border-color:#7F77DD}
+#later-task::placeholder{color:#bbb}
 .done-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid rgba(0,0,0,0.06)}
 .done-row:last-child{border-bottom:none}
 .done-emoji{font-size:16px;flex-shrink:0}
@@ -153,7 +167,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   </div>
   <div id="peek-section">
     <div id="peek-header">
-      <span id="peek-label">Coming up — drag to reorder</span>
+      <span id="peek-label">NEXT — drag to reorder</span>
       <button id="peek-toggle" style="display:none"><i class="ti ti-chevron-up" id="peek-icon"></i><span id="peek-toggle-label">Collapse</span></button>
     </div>
     <div id="peek-items"></div>
@@ -168,6 +182,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div id="add-row">
     <input id="new-task" placeholder="Next quest..."/>
     <button id="btn-add"><span>Q</span></button>
+  </div>
+  <div id="later-section">
+    <div id="later-header">
+      <span id="later-label">LATER</span>
+      <button id="later-toggle" style="display:none"><i class="ti ti-chevron-up" id="later-icon"></i><span id="later-toggle-label">Collapse</span></button>
+    </div>
+    <div id="later-items"></div>
+    <div id="later-add-row">
+      <input id="later-task" placeholder="Add to LATER..."/>
+    </div>
   </div></div>
 
 <script>
@@ -244,23 +268,26 @@ async function apiSaveUserData(){
   const r=await fetch(BASE+'/rest/v1/user_data',{
     method:'POST',
     headers:{...authHeaders(),'Prefer':'resolution=merge-duplicates'},
-    body:JSON.stringify({user_id:currentUser.id,xp,lvl,completed,manual_order:manualOrder||[],updated_at:new Date().toISOString()})
+    body:JSON.stringify({user_id:currentUser.id,xp,lvl,completed,manual_order:manualOrder||[],later_tasks:laterTasks,later_order:laterOrder||[],updated_at:new Date().toISOString()})
   });
   if(!r.ok){const t=await r.text();throw new Error('Save user data failed: '+r.status+' '+t);}
 }
 
 // ── Local state ─────────────────────────────────────────────────────────────
-const STORE='ptq-tasks',STORE_XP='ptq-xp',STORE_LVL='ptq-lvl',ORDER_KEY='ptq-order',DONE_KEY='ptq-done',DIRTY_KEY='ptq-dirty',SESSION_KEY='ptq-session';
+const STORE='ptq-tasks',STORE_XP='ptq-xp',STORE_LVL='ptq-lvl',ORDER_KEY='ptq-order',DONE_KEY='ptq-done',DIRTY_KEY='ptq-dirty',SESSION_KEY='ptq-session',LATER_KEY='ptq-later',LATER_ORDER_KEY='ptq-later-order';
 
 let tasks=JSON.parse(localStorage.getItem(STORE)||'[]');
 tasks.forEach(t=>{if(!t.notes)t.notes=[];if(!t.links)t.links=[];});
+let laterTasks=JSON.parse(localStorage.getItem(LATER_KEY)||'[]');
+laterTasks.forEach(t=>{if(!t.notes)t.notes=[];if(!t.links)t.links=[];});
+let laterOrder=JSON.parse(localStorage.getItem(LATER_ORDER_KEY)||'null');
 let xp=parseInt(localStorage.getItem(STORE_XP)||'0');
 let lvl=parseInt(localStorage.getItem(STORE_LVL)||'1');
 let manualOrder=JSON.parse(localStorage.getItem(ORDER_KEY)||'null');
 let completed=JSON.parse(localStorage.getItem(DONE_KEY)||'[]');
 let dirtyIds=new Set(JSON.parse(localStorage.getItem(DIRTY_KEY)||'[]'));
 let isOnline=navigator.onLine;
-let openSQ={},editingTask=null,editingSub={},dragSrcId=null,openPanel={},peekExpanded=true,touchDragSrc=null,touchDragTarget=null;
+let openSQ={},editingTask=null,editingSub={},dragSrcId=null,openPanel={},peekExpanded=true,touchDragSrc=null,touchDragTarget=null,laterExpanded=true;
 
 const EMOJIS=['🥳','🙌','🎊','🥇','💪','🎉','👏','🏆'];
 const celebDone=["Quest complete! +30 XP","Victory! +30 XP","Conquered! +30 XP","Legendary! +30 XP"];
@@ -275,6 +302,8 @@ function saveLocal(){
   localStorage.setItem(ORDER_KEY,JSON.stringify(manualOrder||[]));
   localStorage.setItem(DONE_KEY,JSON.stringify(completed));
   localStorage.setItem(DIRTY_KEY,JSON.stringify([...dirtyIds]));
+  localStorage.setItem(LATER_KEY,JSON.stringify(laterTasks));
+  localStorage.setItem(LATER_ORDER_KEY,JSON.stringify(laterOrder||[]));
 }
 
 function saveSession(session){
@@ -350,13 +379,16 @@ async function loadFromCloud(){
       // Sync order: prefer cloud order, but only if it references the same task IDs
       if(userData.manual_order&&userData.manual_order.length>0){
         const cloudIds=new Set(userData.manual_order);
-        const localIds=new Set((manualOrder||[]).filter(id=>tasks.find(t=>t.id===id)));
-        // Use cloud order if it has more coverage of current tasks
         const cloudCoverage=[...cloudIds].filter(id=>tasks.find(t=>t.id===id)).length;
         const localCoverage=[...(manualOrder||[])].filter(id=>tasks.find(t=>t.id===id)).length;
-        if(cloudCoverage>=localCoverage){
-          manualOrder=userData.manual_order;
-        }
+        if(cloudCoverage>=localCoverage){manualOrder=userData.manual_order;}
+      }
+      // Sync later tasks
+      if(userData.later_tasks&&userData.later_tasks.length>0){
+        laterTasks=userData.later_tasks.map(t=>({...t,notes:t.notes||[],links:t.links||[]}));
+      }
+      if(userData.later_order&&userData.later_order.length>0){
+        laterOrder=userData.later_order;
       }
     }
     // Clean up: remove any tasks that are already in completed list
@@ -364,6 +396,9 @@ async function loadFromCloud(){
     const dirtyFromCleanup=tasks.filter(t=>completedIds.has(t.id)).map(t=>t.id);
     tasks=tasks.filter(t=>!completedIds.has(t.id));
     if(manualOrder)manualOrder=manualOrder.filter(id=>!completedIds.has(id));
+    // Also remove completed items from later list
+    laterTasks=laterTasks.filter(t=>!completedIds.has(t.id));
+    if(laterOrder)laterOrder=laterOrder.filter(id=>!completedIds.has(id));
     // Delete orphaned tasks from cloud
     dirtyFromCleanup.forEach(id=>{
       if(currentUser&&isOnline)apiDeleteQuest(id).catch(e=>console.warn('cleanup delete:',e.message));
@@ -587,7 +622,7 @@ function renderActive(top){
   const doneSubs=(top.subs||[]).filter(s=>s.done).length;
   const labelRow=document.createElement('div');labelRow.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:.4rem';
   const label=document.createElement('div');label.style.cssText='font-size:11px;color:#bbb;letter-spacing:.06em;text-transform:uppercase;flex:1';
-  label.textContent='Up next';labelRow.appendChild(label);
+  label.textContent='NOW';labelRow.appendChild(label);
   if(hasSubs){const prog=document.createElement('div');prog.style.cssText='font-size:11px;color:#bbb';prog.textContent=doneSubs+' / '+(top.subs||[]).length+' side quests done';labelRow.appendChild(prog);}
   card.appendChild(labelRow);
   const btnStyle='flex:1;padding:10px 0;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none;background:#7F77DD;color:#fff';
@@ -726,6 +761,10 @@ function renderPeek(rest){
     }
     card.appendChild(makeAttPanel(t));
     card.appendChild(makeSQWidget(t.id,'peek'+i));
+    const moveLaterBtn=document.createElement('button');moveLaterBtn.className='move-btn';
+    moveLaterBtn.innerHTML='<i class="ti ti-arrow-down" style="font-size:12px"></i>Move to LATER';
+    moveLaterBtn.onclick=(()=>{const tid=t.id;return()=>{moveToLater(tid);};})();
+    card.appendChild(moveLaterBtn);
     peek.appendChild(card);
   });
 }
@@ -783,11 +822,78 @@ function renderDone(){
     }
   }
 }
+function getLaterOrder(){
+  const ids=laterTasks.map(t=>t.id);
+  if(!laterOrder||!laterOrder.length){laterOrder=[...ids];return laterOrder;}
+  const filtered=laterOrder.filter(id=>ids.includes(id));
+  const newIds=ids.filter(id=>!filtered.includes(id));
+  laterOrder=[...filtered,...newIds];return laterOrder;
+}
+
+function renderLater(){
+  const items=document.getElementById('later-items');
+  const toggle=document.getElementById('later-toggle');
+  items.innerHTML='';
+  if(!laterTasks.length){if(toggle)toggle.style.display='none';return;}
+  if(toggle)toggle.style.display='flex';
+  const icon=document.getElementById('later-icon');
+  const lbl=document.getElementById('later-toggle-label');
+  if(icon)icon.className=laterExpanded?'ti ti-chevron-up':'ti ti-chevron-down';
+  if(lbl)lbl.textContent=laterExpanded?'Collapse':'Expand';
+  if(!laterExpanded)return;
+  getLaterOrder().map(id=>laterTasks.find(t=>t.id===id)).filter(Boolean).forEach(t=>{
+    const card=document.createElement('div');card.className='later-card';
+    const row=document.createElement('div');row.className='later-row';
+    const text=document.createElement('span');text.className='later-text';text.textContent=t.text;
+    const editBtn=document.createElement('button');editBtn.className='icon-btn';
+    editBtn.innerHTML='<i class="ti ti-edit"></i>';
+    editBtn.onclick=(()=>{const id=t.id;return()=>{editingTask=id;renderLater();};})();
+    if(editingTask===t.id){
+      card.appendChild(makeEditInput(t.text,
+        (val)=>{t.text=val;editingTask=null;saveLater();},
+        ()=>{editingTask=null;renderLater();}
+      ,false));
+    } else {
+      row.appendChild(text);row.appendChild(editBtn);card.appendChild(row);
+    }
+    const moveNextBtn=document.createElement('button');moveNextBtn.className='move-btn';
+    moveNextBtn.innerHTML='<i class="ti ti-arrow-up" style="font-size:12px"></i>Move to NEXT';
+    moveNextBtn.onclick=(()=>{const id=t.id;return()=>{moveToNext(id);};})();
+    card.appendChild(moveNextBtn);
+    items.appendChild(card);
+  });
+}
+
+function moveToLater(taskId){
+  const t=tasks.find(t=>t.id===taskId);if(!t)return;
+  laterTasks.push({...t});
+  if(!laterOrder)laterOrder=[];
+  laterOrder.push(taskId);
+  tasks=tasks.filter(x=>x.id!==taskId);
+  if(manualOrder)manualOrder=manualOrder.filter(id=>id!==taskId);
+  saveLater();render();showMini('Moved to LATER');
+}
+
+function moveToNext(taskId){
+  const t=laterTasks.find(t=>t.id===taskId);if(!t)return;
+  tasks.push({...t});
+  if(!manualOrder)manualOrder=[];
+  manualOrder.push(taskId);
+  laterTasks=laterTasks.filter(x=>x.id!==taskId);
+  if(laterOrder)laterOrder=laterOrder.filter(id=>id!==taskId);
+  saveLater();render();showMini('Moved to NEXT');
+}
+
+function saveLater(){
+  saveLocal();
+  if(currentUser&&isOnline)apiSaveUserData().catch(e=>console.warn('later sync:',e.message));
+}
+
 function render(){
   updateBar();const s=sorted();
   if(!s.length){document.getElementById('active-card').innerHTML='<div style="text-align:center;padding:2rem;color:#bbb;font-size:14px">All quests complete! Add one below.</div>';document.getElementById('peek-items').innerHTML='';}
   else{renderActive(s[0]);renderPeek(s.slice(1));}
-  updateToggleBtn();renderDone();
+  updateToggleBtn();renderDone();renderLater();
 }
 function submitSQ(taskId,inputId){
   const inp=document.getElementById(inputId);if(!inp)return;
@@ -824,6 +930,17 @@ document.getElementById('btn-add').onclick=addTask;
 document.getElementById('new-task').onkeydown=function(e){if(e.key==='Enter')addTask();};
 
 document.getElementById('done-recent-toggle').onclick=function(){doneRecentExpanded=!doneRecentExpanded;renderDone();};
+document.getElementById('later-toggle').onclick=function(){laterExpanded=!laterExpanded;renderLater();};
+document.getElementById('later-task').onkeydown=function(e){
+  if(e.key==='Enter'){
+    const txt=this.value.trim();if(!txt)return;
+    const t={id:uid(),text:txt,due:'',subs:[],skipped:0,notes:[],links:[]};
+    laterTasks.push(t);
+    if(!laterOrder)laterOrder=[];
+    laterOrder.push(t.id);
+    this.value='';saveLater();renderLater();gainXP(10);showMini(celebAdd[Math.floor(Math.random()*celebAdd.length)]);
+  }
+};
 document.getElementById('done-earlier-toggle').onclick=function(){doneEarlierExpanded=!doneEarlierExpanded;renderDone();};
 
 // ── Init: restore session from localStorage ──────────────────────────────────
