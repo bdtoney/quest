@@ -399,6 +399,17 @@ async function loadFromCloud(){
     // Also remove completed items from later list
     laterTasks=laterTasks.filter(t=>!completedIds.has(t.id));
     if(laterOrder)laterOrder=laterOrder.filter(id=>!completedIds.has(id));
+    // Remove tasks from NEXT that exist in LATER (LATER wins — more deliberate)
+    const laterIds=new Set(laterTasks.map(t=>t.id));
+    const crossDirty=tasks.filter(t=>laterIds.has(t.id)).map(t=>t.id);
+    tasks=tasks.filter(t=>!laterIds.has(t.id));
+    if(manualOrder)manualOrder=manualOrder.filter(id=>!laterIds.has(id));
+    crossDirty.forEach(id=>{
+      if(currentUser&&isOnline)apiDeleteQuest(id).catch(e=>console.warn('cross dedup:',e.message));
+    });
+    // Deduplicate laterTasks by id
+    const seenLater=new Set();
+    laterTasks=laterTasks.filter(t=>{if(seenLater.has(t.id))return false;seenLater.add(t.id);return true;});
     // Delete orphaned tasks from cloud
     dirtyFromCleanup.forEach(id=>{
       if(currentUser&&isOnline)apiDeleteQuest(id).catch(e=>console.warn('cleanup delete:',e.message));
@@ -871,19 +882,32 @@ function renderLater(){
 
 function moveToLater(taskId){
   const t=tasks.find(t=>t.id===taskId);if(!t)return;
+  // Avoid duplicates
+  if(laterTasks.find(x=>x.id===taskId)){
+    tasks=tasks.filter(x=>x.id!==taskId);
+    if(manualOrder)manualOrder=manualOrder.filter(id=>id!==taskId);
+    saveLater();render();return;
+  }
   laterTasks.push({...t});
   if(!laterOrder)laterOrder=[];
   laterOrder.push(taskId);
   tasks=tasks.filter(x=>x.id!==taskId);
   if(manualOrder)manualOrder=manualOrder.filter(id=>id!==taskId);
+  // Delete from quests table in cloud
+  if(currentUser&&isOnline)apiDeleteQuest(taskId).catch(e=>console.warn('moveToLater delete:',e.message));
   saveLater();render();showMini('Moved to LATER');
 }
 
 function moveToNext(taskId){
   const t=laterTasks.find(t=>t.id===taskId);if(!t)return;
-  tasks.push({...t});
-  if(!manualOrder)manualOrder=[];
-  manualOrder.push(taskId);
+  // Avoid duplicates
+  if(!tasks.find(x=>x.id===taskId)){
+    tasks.push({...t});
+    if(!manualOrder)manualOrder=[];
+    manualOrder.push(taskId);
+    // Sync to quests table
+    if(currentUser&&isOnline)syncToCloud(taskId).catch(e=>console.warn('moveToNext sync:',e.message));
+  }
   laterTasks=laterTasks.filter(x=>x.id!==taskId);
   if(laterOrder)laterOrder=laterOrder.filter(id=>id!==taskId);
   saveLater();render();showMini('Moved to NEXT');
