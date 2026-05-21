@@ -980,14 +980,14 @@ function renderLater(){
       card.appendChild(subsDiv);
     }
     card.appendChild(makeAttPanelLater(t));
-    card.appendChild(makeSQWidgetLater(t.id,'later-'+t.id));
-    const moveNextRow=document.createElement('div');moveNextRow.style.cssText='display:flex;align-items:center;justify-content:flex-end;margin-top:6px';
+    const laterBtnRow=document.createElement('div');laterBtnRow.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-top:6px';
+    const sqWidgetLater=makeSQWidgetLater(t.id,'later-'+t.id);sqWidgetLater.style.marginTop='0';
     const moveNextBtn=document.createElement('button');moveNextBtn.className='move-btn';
-    moveNextBtn.style.marginTop='0';
+    moveNextBtn.style.marginTop='0';moveNextBtn.style.marginLeft='auto';
     moveNextBtn.innerHTML='<i class="ti ti-arrow-up" style="font-size:12px"></i>Move to NEXT';
     moveNextBtn.onclick=(()=>{const id=t.id;return()=>{moveToNext(id);};})();
-    moveNextRow.appendChild(moveNextBtn);
-    card.appendChild(moveNextRow);
+    laterBtnRow.appendChild(sqWidgetLater);laterBtnRow.appendChild(moveNextBtn);
+    card.appendChild(laterBtnRow);
     items.appendChild(card);
   });
 }
