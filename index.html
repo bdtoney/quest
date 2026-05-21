@@ -189,9 +189,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <button id="later-toggle" style="display:none"><i class="ti ti-chevron-up" id="later-icon"></i><span id="later-toggle-label">Collapse</span></button>
     </div>
     <div id="later-items"></div>
-    <div id="later-add-row">
-      <input id="later-task" placeholder="Add to LATER..."/>
-    </div>
+
   </div></div>
 
 <script>
@@ -1072,16 +1070,7 @@ document.getElementById('new-task').onkeydown=function(e){if(e.key==='Enter')add
 
 document.getElementById('done-recent-toggle').onclick=function(){doneRecentExpanded=!doneRecentExpanded;renderDone();};
 document.getElementById('later-toggle').onclick=function(){laterExpanded=!laterExpanded;renderLater();};
-document.getElementById('later-task').onkeydown=function(e){
-  if(e.key==='Enter'){
-    const txt=this.value.trim();if(!txt)return;
-    const t={id:uid(),text:txt,due:'',subs:[],skipped:0,notes:[],links:[]};
-    laterTasks.push(t);
-    if(!laterOrder)laterOrder=[];
-    laterOrder.push(t.id);
-    this.value='';saveLater();renderLater();gainXP(10);showMini(celebAdd[Math.floor(Math.random()*celebAdd.length)]);
-  }
-};
+
 document.getElementById('done-earlier-toggle').onclick=function(){doneEarlierExpanded=!doneEarlierExpanded;renderDone();};
 
 // ── Init: restore session from localStorage ──────────────────────────────────
