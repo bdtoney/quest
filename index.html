@@ -841,7 +841,7 @@ function renderPeek(rest){
       yes.onclick=(()=>{const tid=t.id;return()=>{deleteTask(tid);};})();
       const no=document.createElement('button');no.className='del-confirm-no';no.textContent='Never mind';
       no.onclick=()=>{confirmDelete=null;render();};
-      const cf=document.createElement('div');cf.className='del-confirm';cf.appendChild(yes);cf.appendChild(no);
+      const cf=document.createElement('div');cf.className='del-confirm';cf.appendChild(no);cf.appendChild(yes);
       delWrap.appendChild(cf);
     } else {
       const delBtn=document.createElement('button');delBtn.className='del-btn';
@@ -856,7 +856,7 @@ function renderPeek(rest){
     moveLaterBtn.style.cssText='margin-top:0;margin-left:0;flex-shrink:0';
     moveLaterBtn.innerHTML='<i class="ti ti-arrow-down" style="font-size:12px"></i>Move to LATER';
     moveLaterBtn.onclick=(()=>{const tid=t.id;return()=>{moveToLater(tid);};})();
-    btnRow.appendChild(delWrap);btnRow.appendChild(sqWidget);btnRow.appendChild(moveLaterBtn);
+    btnRow.appendChild(sqWidget);btnRow.appendChild(delWrap);btnRow.appendChild(moveLaterBtn);
     card.appendChild(btnRow);
     peek.appendChild(card);
   });
@@ -1102,7 +1102,7 @@ function renderLater(){
       yes.onclick=(()=>{const tid=t.id;return()=>{deleteLaterTask(tid);};})();
       const no=document.createElement('button');no.className='del-confirm-no';no.textContent='Never mind';
       no.onclick=()=>{confirmDelete=null;renderLater();};
-      const cf=document.createElement('div');cf.className='del-confirm';cf.appendChild(yes);cf.appendChild(no);
+      const cf=document.createElement('div');cf.className='del-confirm';cf.appendChild(no);cf.appendChild(yes);
       laterDelWrap.appendChild(cf);
     } else {
       const delBtn=document.createElement('button');delBtn.className='del-btn';
@@ -1117,7 +1117,7 @@ function renderLater(){
     moveNextBtn.style.cssText='margin-top:0;margin-left:0;flex-shrink:0';
     moveNextBtn.innerHTML='<i class="ti ti-arrow-up" style="font-size:12px"></i>Move to NEXT';
     moveNextBtn.onclick=(()=>{const id=t.id;return()=>{moveToNext(id);};})();
-    laterBtnRow.appendChild(laterDelWrap);laterBtnRow.appendChild(sqWidgetLater);laterBtnRow.appendChild(moveNextBtn);
+    laterBtnRow.appendChild(sqWidgetLater);laterBtnRow.appendChild(laterDelWrap);laterBtnRow.appendChild(moveNextBtn);
     card.appendChild(laterBtnRow);
     items.appendChild(card);
   });
