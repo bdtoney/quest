@@ -113,6 +113,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .later-row{display:flex;align-items:center;gap:8px}
 .move-btn{margin-top:6px;padding:4px 10px;font-size:12px;color:#7F77DD;background:transparent;border:0.5px solid #AFA9EC;border-radius:8px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;margin-left:auto}
 .move-btn:hover{background:#EEEDFE}
+.del-btn{padding:4px 8px;font-size:13px;color:#ccc;background:transparent;border:none;border-radius:8px;cursor:pointer;font-family:inherit;display:flex;align-items:center;flex-shrink:0}
+.del-btn:hover{color:#e24b4a;background:#fff0f0}
+.del-confirm{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.del-confirm-yes{padding:3px 10px;font-size:12px;font-weight:600;color:#fff;background:#e24b4a;border:none;border-radius:8px;cursor:pointer;font-family:inherit}
+.del-confirm-yes:hover{background:#c93a3a}
+.del-confirm-no{padding:3px 10px;font-size:12px;color:#888;background:transparent;border:0.5px solid rgba(0,0,0,0.2);border-radius:8px;cursor:pointer;font-family:inherit}
+.del-confirm-no:hover{background:#f5f5f4}
 #later-add-row{margin-top:8px}
 #later-task{width:100%;padding:8px 12px;font-size:14px;border:0.5px solid rgba(0,0,0,0.12);border-radius:8px;background:#f9f9f8;color:#1a1a1a;font-family:inherit}
 #later-task:focus{outline:none;border-color:#7F77DD}
@@ -289,7 +296,7 @@ let manualOrder=JSON.parse(localStorage.getItem(ORDER_KEY)||'null');
 let completed=JSON.parse(localStorage.getItem(DONE_KEY)||'[]');
 let dirtyIds=new Set(JSON.parse(localStorage.getItem(DIRTY_KEY)||'[]'));
 let isOnline=navigator.onLine;
-let openSQ={},editingTask=null,editingSub={},dragSrcId=null,openPanel={},peekExpanded=true,touchDragSrc=null,touchDragTarget=null,laterExpanded=true;
+let openSQ={},editingTask=null,editingSub={},dragSrcId=null,openPanel={},peekExpanded=true,touchDragSrc=null,touchDragTarget=null,laterExpanded=true,confirmDelete=null;
 
 const EMOJIS=['🥳','🙌','🎊','🥇','💪','🎉','👏','🏆'];
 const celebDone=["Quest complete! +30 XP","Victory! +30 XP","Conquered! +30 XP","Legendary! +30 XP"];
@@ -826,14 +833,30 @@ function renderPeek(rest){
     }
 
     card.appendChild(makeAttPanel(t));
-    const btnRow=document.createElement('div');btnRow.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-top:6px';
-    const sqWidget=makeSQWidget(t.id,'peek'+i);
-    sqWidget.style.marginTop='0';
+    const btnRow=document.createElement('div');btnRow.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-top:6px;gap:4px';
+    // Delete button (bottom left)
+    const delWrap=document.createElement('div');delWrap.style.cssText='display:flex;align-items:center;flex-shrink:0';
+    if(confirmDelete===t.id){
+      const yes=document.createElement('button');yes.className='del-confirm-yes';yes.textContent='Delete';
+      yes.onclick=(()=>{const tid=t.id;return()=>{deleteTask(tid);};})();
+      const no=document.createElement('button');no.className='del-confirm-no';no.textContent='Never mind';
+      no.onclick=()=>{confirmDelete=null;render();};
+      const cf=document.createElement('div');cf.className='del-confirm';cf.appendChild(yes);cf.appendChild(no);
+      delWrap.appendChild(cf);
+    } else {
+      const delBtn=document.createElement('button');delBtn.className='del-btn';
+      delBtn.innerHTML='<i class="ti ti-trash" style="font-size:14px"></i>';
+      delBtn.onclick=(()=>{const tid=t.id;return()=>{confirmDelete=tid;render();};})();
+      delWrap.appendChild(delBtn);
+    }
+    // Add side quest (center)
+    const sqWidget=makeSQWidget(t.id,'peek'+i);sqWidget.style.cssText='margin-top:0;flex:1;display:flex;justify-content:center';
+    // Move to LATER (right)
     const moveLaterBtn=document.createElement('button');moveLaterBtn.className='move-btn';
-    moveLaterBtn.style.marginTop='0';moveLaterBtn.style.marginLeft='auto';
+    moveLaterBtn.style.cssText='margin-top:0;margin-left:0;flex-shrink:0';
     moveLaterBtn.innerHTML='<i class="ti ti-arrow-down" style="font-size:12px"></i>Move to LATER';
     moveLaterBtn.onclick=(()=>{const tid=t.id;return()=>{moveToLater(tid);};})();
-    btnRow.appendChild(sqWidget);btnRow.appendChild(moveLaterBtn);
+    btnRow.appendChild(delWrap);btnRow.appendChild(sqWidget);btnRow.appendChild(moveLaterBtn);
     card.appendChild(btnRow);
     peek.appendChild(card);
   });
@@ -1071,16 +1094,48 @@ function renderLater(){
       card.appendChild(subsDiv);
     }
     card.appendChild(makeAttPanelLater(t));
-    const laterBtnRow=document.createElement('div');laterBtnRow.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-top:6px';
-    const sqWidgetLater=makeSQWidgetLater(t.id,'later-'+t.id);sqWidgetLater.style.marginTop='0';
+    const laterBtnRow=document.createElement('div');laterBtnRow.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-top:6px;gap:4px';
+    // Delete button (bottom left)
+    const laterDelWrap=document.createElement('div');laterDelWrap.style.cssText='display:flex;align-items:center;flex-shrink:0';
+    if(confirmDelete===t.id){
+      const yes=document.createElement('button');yes.className='del-confirm-yes';yes.textContent='Delete';
+      yes.onclick=(()=>{const tid=t.id;return()=>{deleteLaterTask(tid);};})();
+      const no=document.createElement('button');no.className='del-confirm-no';no.textContent='Never mind';
+      no.onclick=()=>{confirmDelete=null;renderLater();};
+      const cf=document.createElement('div');cf.className='del-confirm';cf.appendChild(yes);cf.appendChild(no);
+      laterDelWrap.appendChild(cf);
+    } else {
+      const delBtn=document.createElement('button');delBtn.className='del-btn';
+      delBtn.innerHTML='<i class="ti ti-trash" style="font-size:14px"></i>';
+      delBtn.onclick=(()=>{const tid=t.id;return()=>{confirmDelete=tid;renderLater();};})();
+      laterDelWrap.appendChild(delBtn);
+    }
+    // Add side quest (center)
+    const sqWidgetLater=makeSQWidgetLater(t.id,'later-'+t.id);sqWidgetLater.style.cssText='margin-top:0;flex:1;display:flex;justify-content:center';
+    // Move to NEXT (right)
     const moveNextBtn=document.createElement('button');moveNextBtn.className='move-btn';
-    moveNextBtn.style.marginTop='0';moveNextBtn.style.marginLeft='auto';
+    moveNextBtn.style.cssText='margin-top:0;margin-left:0;flex-shrink:0';
     moveNextBtn.innerHTML='<i class="ti ti-arrow-up" style="font-size:12px"></i>Move to NEXT';
     moveNextBtn.onclick=(()=>{const id=t.id;return()=>{moveToNext(id);};})();
-    laterBtnRow.appendChild(sqWidgetLater);laterBtnRow.appendChild(moveNextBtn);
+    laterBtnRow.appendChild(laterDelWrap);laterBtnRow.appendChild(sqWidgetLater);laterBtnRow.appendChild(moveNextBtn);
     card.appendChild(laterBtnRow);
     items.appendChild(card);
   });
+}
+
+function deleteTask(taskId){
+  confirmDelete=null;
+  tasks=tasks.filter(t=>t.id!==taskId);
+  if(manualOrder)manualOrder=manualOrder.filter(id=>id!==taskId);
+  if(currentUser&&isOnline)apiDeleteQuest(taskId).catch(e=>console.warn('delete:',e.message));
+  saveLocal();render();showMini('Quest deleted');
+}
+
+function deleteLaterTask(taskId){
+  confirmDelete=null;
+  laterTasks=laterTasks.filter(t=>t.id!==taskId);
+  if(laterOrder)laterOrder=laterOrder.filter(id=>id!==taskId);
+  saveLater();renderLater();showMini('Quest deleted');
 }
 
 function moveToLater(taskId){
@@ -1148,7 +1203,7 @@ function skipTop(){
   const s=sorted();if(!s.length)return;
   const topId=s[0].id;const idx=manualOrder.indexOf(topId);
   if(idx>-1){manualOrder.splice(idx,1);manualOrder.push(topId);}
-  openSQ[topId]=false;saveLocal();if(currentUser&&isOnline)apiSaveUserData().catch(e=>console.warn('skip sync:',e.message));render();showMini('Skipped — moved to back');
+  confirmDelete=null;openSQ[topId]=false;saveLocal();if(currentUser&&isOnline)apiSaveUserData().catch(e=>console.warn('skip sync:',e.message));render();showMini('Skipped — moved to back');
 }
 function addTask(){
   const inp=document.getElementById('new-task');const txt=inp.value.trim();if(!txt)return;
