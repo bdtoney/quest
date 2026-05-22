@@ -100,6 +100,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .done-toggle{background:none;border:none;cursor:pointer;font-size:12px;color:#bbb;display:flex;align-items:center;gap:4px;padding:2px 6px;border-radius:8px}
 .done-toggle:hover{background:#f5f5f4;color:#666}
 #later-section{margin-top:1.5rem;border-top:0.5px solid rgba(0,0,0,0.1);padding-top:1rem}
+.task-datetime{font-size:12px;color:#7F77DD;text-align:center;margin-bottom:6px;font-weight:500;letter-spacing:.02em}
+.datetime-date{color:#7F77DD}
+.datetime-time{color:#9B77DD}
+.datetime-sep{color:#bbb;margin:0 4px}
 #later-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 #later-label{font-size:12px;color:#aaa;letter-spacing:.06em;font-weight:600}
 #later-toggle{background:none;border:none;cursor:pointer;font-size:12px;color:#aaa;display:flex;align-items:center;gap:4px;padding:2px 6px;border-radius:8px}
@@ -531,6 +535,23 @@ function updateBar(){
   document.getElementById('lvl-right').textContent='LVL '+lvl;
   document.getElementById('xp-bar-fill').style.width=xp+'%';
 }
+function fmtTaskDateTime(t){
+  if(!t.taskDate&&!t.taskTime)return null;
+  const parts=[];
+  if(t.taskDate){
+    const d=new Date(t.taskDate+'T00:00:00');
+    parts.push(d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}));
+  }
+  if(t.taskTime){
+    const [h,m]=t.taskTime.split(':');
+    const hr=parseInt(h);
+    const ampm=hr>=12?'PM':'AM';
+    const hr12=hr%12||12;
+    parts.push(hr12+':'+(m||'00')+' '+ampm);
+  }
+  return parts.join(' · ');
+}
+
 function makeEditInput(val,onSave,onCancel,large){
   const wrap=document.createElement('div');wrap.style.cssText='display:flex;gap:6px;align-items:center';
   const inp=document.createElement('input');inp.className='sq-input';inp.style.fontSize=large?'16px':'13px';inp.value=val;
@@ -551,7 +572,13 @@ function makeAttPanel(t){
   const lb=document.createElement('button');lb.className='action-btn'+(panel==='link'?' active':'');
   lb.innerHTML='<i class="ti ti-link" style="font-size:13px"></i>Link';
   lb.onclick=(()=>{const id=t.id;return()=>{openPanel[id]=openPanel[id]==='link'?null:'link';render();};})();
-  btns.appendChild(nb);btns.appendChild(lb);wrap.appendChild(btns);
+  const db=document.createElement('button');db.className='action-btn'+(panel==='date'?' active':'');
+  db.innerHTML='<i class="ti ti-calendar" style="font-size:13px"></i>Date';
+  db.onclick=(()=>{const id=t.id;return()=>{openPanel[id]=openPanel[id]==='date'?null:'date';render();};})();
+  const tb=document.createElement('button');tb.className='action-btn'+(panel==='time'?' active':'');
+  tb.innerHTML='<i class="ti ti-clock" style="font-size:13px"></i>Time';
+  tb.onclick=(()=>{const id=t.id;return()=>{openPanel[id]=openPanel[id]==='time'?null:'time';render();};})();
+  btns.appendChild(nb);btns.appendChild(lb);btns.appendChild(db);btns.appendChild(tb);wrap.appendChild(btns);
   if(panel==='note'){
     const form=document.createElement('div');form.className='inline-form';
     const ta=document.createElement('textarea');ta.className='sq-textarea';ta.placeholder='Write a note...';
@@ -575,6 +602,34 @@ function makeAttPanel(t){
     ui.onkeydown=e=>{if(e.key==='Enter')s.onclick();};
     br.appendChild(s);br.appendChild(c);form.appendChild(ui);form.appendChild(li);form.appendChild(br);wrap.appendChild(form);
     setTimeout(()=>ui.focus(),50);
+  }
+  if(panel==='date'){
+    const form=document.createElement('div');form.className='inline-form';
+    const di=document.createElement('input');di.type='date';di.className='sq-input';di.style.width='100%';
+    if(t.taskDate)di.value=t.taskDate;
+    const br=document.createElement('div');br.className='inline-form-btns';
+    const s=document.createElement('button');s.className='sq-save-btn';s.textContent='Save date';
+    const clr=document.createElement('button');clr.className='sq-cancel-btn';clr.textContent='Clear';
+    const c=document.createElement('button');c.className='sq-cancel-btn';c.textContent='Cancel';
+    s.onclick=()=>{t.taskDate=di.value||null;openPanel[t.id]=null;save(t.id);gainXP(10);render();showMini('Date saved! +10 XP');};
+    clr.onclick=()=>{t.taskDate=null;openPanel[t.id]=null;save(t.id);render();showMini('Date cleared');};
+    c.onclick=(()=>{const id=t.id;return()=>{openPanel[id]=null;render();};})();
+    br.appendChild(s);br.appendChild(clr);br.appendChild(c);form.appendChild(di);form.appendChild(br);wrap.appendChild(form);
+    setTimeout(()=>di.focus(),50);
+  }
+  if(panel==='time'){
+    const form=document.createElement('div');form.className='inline-form';
+    const ti=document.createElement('input');ti.type='time';ti.className='sq-input';ti.style.width='100%';
+    if(t.taskTime)ti.value=t.taskTime;
+    const br=document.createElement('div');br.className='inline-form-btns';
+    const s=document.createElement('button');s.className='sq-save-btn';s.textContent='Save time';
+    const clr=document.createElement('button');clr.className='sq-cancel-btn';clr.textContent='Clear';
+    const c=document.createElement('button');c.className='sq-cancel-btn';c.textContent='Cancel';
+    s.onclick=()=>{t.taskTime=ti.value||null;openPanel[t.id]=null;save(t.id);gainXP(10);render();showMini('Time saved! +10 XP');};
+    clr.onclick=()=>{t.taskTime=null;openPanel[t.id]=null;save(t.id);render();showMini('Time cleared');};
+    c.onclick=(()=>{const id=t.id;return()=>{openPanel[id]=null;render();};})();
+    br.appendChild(s);br.appendChild(clr);br.appendChild(c);form.appendChild(ti);form.appendChild(br);wrap.appendChild(form);
+    setTimeout(()=>ti.focus(),50);
   }
   const hasAtts=(t.notes&&t.notes.length)||(t.links&&t.links.length);
   if(hasAtts){
@@ -634,6 +689,12 @@ function renderActive(top){
   label.textContent='NOW';labelRow.appendChild(label);
   if(hasSubs){const prog=document.createElement('div');prog.style.cssText='font-size:11px;color:#bbb';prog.textContent=doneSubs+' / '+(top.subs||[]).length+' side quests done';labelRow.appendChild(prog);}
   card.appendChild(labelRow);
+  // DateTime display for NOW card
+  const dtStr=fmtTaskDateTime(top);
+  if(dtStr){
+    const dtEl=document.createElement('div');dtEl.className='task-datetime';dtEl.textContent=dtStr;
+    card.appendChild(dtEl);
+  }
   const btnStyle='flex:1;padding:10px 0;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none;background:#7F77DD;color:#fff';
   const skipStyle='flex:1;padding:10px 0;border-radius:8px;font-size:14px;cursor:pointer;background:transparent;border:0.5px solid rgba(0,0,0,0.2);color:#666';
   if(activeSub){
@@ -741,6 +802,8 @@ function renderPeek(rest){
       const eb=document.createElement('button');eb.className='icon-btn';eb.innerHTML='<i class="ti ti-edit"></i>';
       eb.onclick=(()=>{const id=t.id;return()=>{editingTask=id;render();};})();
       header.appendChild(handle);header.appendChild(n);header.appendChild(ts);header.appendChild(d);header.appendChild(eb);card.appendChild(header);
+      const peekDt=fmtTaskDateTime(t);
+      if(peekDt){const dtEl=document.createElement('div');dtEl.className='task-datetime';dtEl.style.textAlign='center';dtEl.textContent=peekDt;card.appendChild(dtEl);}
     }
     if(t.subs&&t.subs.length){
       const subOrder=t.subOrder||t.subs.map((_,i)=>i);
@@ -845,7 +908,13 @@ function makeAttPanelLater(t){
   const lb=document.createElement('button');lb.className='action-btn'+(panel==='link'?' active':'');
   lb.innerHTML='<i class="ti ti-link" style="font-size:13px"></i>Link';
   lb.onclick=(()=>{const id=t.id;return()=>{openPanel[id]=openPanel[id]==='link'?null:'link';renderLater();};})();
-  btns.appendChild(nb);btns.appendChild(lb);wrap.appendChild(btns);
+  const db=document.createElement('button');db.className='action-btn'+(panel==='date'?' active':'');
+  db.innerHTML='<i class="ti ti-calendar" style="font-size:13px"></i>Date';
+  db.onclick=(()=>{const id=t.id;return()=>{openPanel[id]=openPanel[id]==='date'?null:'date';renderLater();};})();
+  const tb=document.createElement('button');tb.className='action-btn'+(panel==='time'?' active':'');
+  tb.innerHTML='<i class="ti ti-clock" style="font-size:13px"></i>Time';
+  tb.onclick=(()=>{const id=t.id;return()=>{openPanel[id]=openPanel[id]==='time'?null:'time';renderLater();};})();
+  btns.appendChild(nb);btns.appendChild(lb);btns.appendChild(db);btns.appendChild(tb);wrap.appendChild(btns);
   if(panel==='note'){
     const form=document.createElement('div');form.className='inline-form';
     const ta=document.createElement('textarea');ta.className='sq-textarea';ta.placeholder='Write a note...';
@@ -869,6 +938,34 @@ function makeAttPanelLater(t){
     ui.onkeydown=e=>{if(e.key==='Enter')s.onclick();};
     br.appendChild(s);br.appendChild(c);form.appendChild(ui);form.appendChild(li);form.appendChild(br);wrap.appendChild(form);
     setTimeout(()=>ui.focus(),50);
+  }
+  if(panel==='date'){
+    const form=document.createElement('div');form.className='inline-form';
+    const di=document.createElement('input');di.type='date';di.className='sq-input';di.style.width='100%';
+    if(t.taskDate)di.value=t.taskDate;
+    const br=document.createElement('div');br.className='inline-form-btns';
+    const s=document.createElement('button');s.className='sq-save-btn';s.textContent='Save date';
+    const clr=document.createElement('button');clr.className='sq-cancel-btn';clr.textContent='Clear';
+    const c=document.createElement('button');c.className='sq-cancel-btn';c.textContent='Cancel';
+    s.onclick=()=>{t.taskDate=di.value||null;openPanel[t.id]=null;saveLater();gainXP(10);renderLater();showMini('Date saved! +10 XP');};
+    clr.onclick=()=>{t.taskDate=null;openPanel[t.id]=null;saveLater();renderLater();showMini('Date cleared');};
+    c.onclick=(()=>{const id=t.id;return()=>{openPanel[id]=null;renderLater();};})();
+    br.appendChild(s);br.appendChild(clr);br.appendChild(c);form.appendChild(di);form.appendChild(br);wrap.appendChild(form);
+    setTimeout(()=>di.focus(),50);
+  }
+  if(panel==='time'){
+    const form=document.createElement('div');form.className='inline-form';
+    const ti=document.createElement('input');ti.type='time';ti.className='sq-input';ti.style.width='100%';
+    if(t.taskTime)ti.value=t.taskTime;
+    const br=document.createElement('div');br.className='inline-form-btns';
+    const s=document.createElement('button');s.className='sq-save-btn';s.textContent='Save time';
+    const clr=document.createElement('button');clr.className='sq-cancel-btn';clr.textContent='Clear';
+    const c=document.createElement('button');c.className='sq-cancel-btn';c.textContent='Cancel';
+    s.onclick=()=>{t.taskTime=ti.value||null;openPanel[t.id]=null;saveLater();gainXP(10);renderLater();showMini('Time saved! +10 XP');};
+    clr.onclick=()=>{t.taskTime=null;openPanel[t.id]=null;saveLater();renderLater();showMini('Time cleared');};
+    c.onclick=(()=>{const id=t.id;return()=>{openPanel[id]=null;renderLater();};})();
+    br.appendChild(s);br.appendChild(clr);br.appendChild(c);form.appendChild(ti);form.appendChild(br);wrap.appendChild(form);
+    setTimeout(()=>ti.focus(),50);
   }
   const hasAtts=(t.notes&&t.notes.length)||(t.links&&t.links.length);
   if(hasAtts){
@@ -957,6 +1054,8 @@ function renderLater(){
     } else {
       row.appendChild(text);row.appendChild(editBtn);card.appendChild(row);
     }
+    const laterDt=fmtTaskDateTime(t);
+    if(laterDt){const dtEl=document.createElement('div');dtEl.className='task-datetime';dtEl.textContent=laterDt;card.appendChild(dtEl);}
     // Side quests
     if(t.subs&&t.subs.length){
       const subOrder=t.subOrder||t.subs.map((_,i)=>i);
