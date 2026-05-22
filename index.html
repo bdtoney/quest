@@ -834,8 +834,10 @@ function renderPeek(rest){
 
     card.appendChild(makeAttPanel(t));
     const btnRow=document.createElement('div');btnRow.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-top:6px;gap:4px';
-    // Delete button (bottom left)
-    const delWrap=document.createElement('div');delWrap.style.cssText='display:flex;align-items:center;flex-shrink:0';
+    // Add side quest (bottom left)
+    const sqWidget=makeSQWidget(t.id,'peek'+i);sqWidget.style.cssText='margin-top:0;flex:0 0 auto';
+    // Delete button (center)
+    const delWrap=document.createElement('div');delWrap.style.cssText='display:flex;align-items:center;justify-content:center;flex:1';
     if(confirmDelete===t.id){
       const yes=document.createElement('button');yes.className='del-confirm-yes';yes.textContent='Delete';
       yes.onclick=(()=>{const tid=t.id;return()=>{deleteTask(tid);};})();
@@ -849,11 +851,9 @@ function renderPeek(rest){
       delBtn.onclick=(()=>{const tid=t.id;return()=>{confirmDelete=tid;render();};})();
       delWrap.appendChild(delBtn);
     }
-    // Add side quest (center)
-    const sqWidget=makeSQWidget(t.id,'peek'+i);sqWidget.style.cssText='margin-top:0;flex:1;display:flex;justify-content:center';
     // Move to LATER (right)
     const moveLaterBtn=document.createElement('button');moveLaterBtn.className='move-btn';
-    moveLaterBtn.style.cssText='margin-top:0;margin-left:0;flex-shrink:0';
+    moveLaterBtn.style.cssText='margin-top:0;margin-left:0;flex:0 0 auto';
     moveLaterBtn.innerHTML='<i class="ti ti-arrow-down" style="font-size:12px"></i>Move to LATER';
     moveLaterBtn.onclick=(()=>{const tid=t.id;return()=>{moveToLater(tid);};})();
     btnRow.appendChild(sqWidget);btnRow.appendChild(delWrap);btnRow.appendChild(moveLaterBtn);
@@ -1095,8 +1095,10 @@ function renderLater(){
     }
     card.appendChild(makeAttPanelLater(t));
     const laterBtnRow=document.createElement('div');laterBtnRow.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-top:6px;gap:4px';
-    // Delete button (bottom left)
-    const laterDelWrap=document.createElement('div');laterDelWrap.style.cssText='display:flex;align-items:center;flex-shrink:0';
+    // Add side quest (bottom left)
+    const sqWidgetLater=makeSQWidgetLater(t.id,'later-'+t.id);sqWidgetLater.style.cssText='margin-top:0;flex:0 0 auto';
+    // Delete button (center)
+    const laterDelWrap=document.createElement('div');laterDelWrap.style.cssText='display:flex;align-items:center;justify-content:center;flex:1';
     if(confirmDelete===t.id){
       const yes=document.createElement('button');yes.className='del-confirm-yes';yes.textContent='Delete';
       yes.onclick=(()=>{const tid=t.id;return()=>{deleteLaterTask(tid);};})();
@@ -1110,11 +1112,9 @@ function renderLater(){
       delBtn.onclick=(()=>{const tid=t.id;return()=>{confirmDelete=tid;renderLater();};})();
       laterDelWrap.appendChild(delBtn);
     }
-    // Add side quest (center)
-    const sqWidgetLater=makeSQWidgetLater(t.id,'later-'+t.id);sqWidgetLater.style.cssText='margin-top:0;flex:1;display:flex;justify-content:center';
     // Move to NEXT (right)
     const moveNextBtn=document.createElement('button');moveNextBtn.className='move-btn';
-    moveNextBtn.style.cssText='margin-top:0;margin-left:0;flex-shrink:0';
+    moveNextBtn.style.cssText='margin-top:0;margin-left:0;flex:0 0 auto';
     moveNextBtn.innerHTML='<i class="ti ti-arrow-up" style="font-size:12px"></i>Move to NEXT';
     moveNextBtn.onclick=(()=>{const id=t.id;return()=>{moveToNext(id);};})();
     laterBtnRow.appendChild(sqWidgetLater);laterBtnRow.appendChild(laterDelWrap);laterBtnRow.appendChild(moveNextBtn);
