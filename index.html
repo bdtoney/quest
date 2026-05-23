@@ -742,8 +742,8 @@ function renderActive(top){
     if(hasSubs){const note=document.createElement('div');note.style.cssText='font-size:13px;color:#888;margin-bottom:.75rem;padding:8px 12px;background:#f5f5f4;border-radius:8px';note.textContent='All side quests complete — mark the quest done!';card.appendChild(note);}
     card.appendChild(makeAttPanel(top));card.appendChild(makeSQWidget(top.id,'active'));
     const row=document.createElement('div');row.style.cssText='display:flex;gap:10px;margin-top:1rem';
-    row.appendChild(makeBtn('Mark complete',completeTop,btnStyle));
-    row.appendChild(makeBtn('Skip for now',skipTop,skipStyle));
+    row.appendChild(makeBtn('Done',completeTop,btnStyle));
+    row.appendChild(makeBtn('Skip',skipTop,skipStyle));
     card.appendChild(row);
   }
 }
