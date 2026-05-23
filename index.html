@@ -721,7 +721,26 @@ function renderActive(top){
       subRow.appendChild(subName);subRow.appendChild(esb);card.appendChild(subRow);
     }
     const due=document.createElement('div');due.style.cssText='font-size:13px;color:#888;margin-bottom:.75rem';due.textContent=fmtDue(top.due);card.appendChild(due);
-    card.appendChild(makeAttPanel(top));card.appendChild(makeSQWidget(top.id,'active'));
+    card.appendChild(makeAttPanel(top));
+    const nowBtnRow1=document.createElement('div');nowBtnRow1.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-top:6px;gap:4px';
+    const nowSQ1=makeSQWidget(top.id,'active');nowSQ1.style.cssText='margin-top:0;flex:0 0 auto';
+    const nowDelWrap1=document.createElement('div');nowDelWrap1.style.cssText='display:flex;align-items:center;justify-content:center;flex:1';
+    if(confirmDelete===top.id){
+      const yes=document.createElement('button');yes.className='del-confirm-yes';yes.textContent='Delete';
+      yes.onclick=()=>{deleteTask(top.id);};
+      const no=document.createElement('button');no.className='del-confirm-no';no.textContent='Never mind';
+      no.onclick=()=>{confirmDelete=null;render();};
+      const cf=document.createElement('div');cf.className='del-confirm';cf.appendChild(no);cf.appendChild(yes);
+      nowDelWrap1.appendChild(cf);
+    } else {
+      const delBtn=document.createElement('button');delBtn.className='del-btn';
+      delBtn.innerHTML='<i class="ti ti-trash" style="font-size:14px"></i>';
+      delBtn.onclick=()=>{confirmDelete=top.id;render();};
+      nowDelWrap1.appendChild(delBtn);
+    }
+    const nowSpacer1=document.createElement('div');nowSpacer1.style.cssText='flex:0 0 auto;visibility:hidden';
+    nowBtnRow1.appendChild(nowSQ1);nowBtnRow1.appendChild(nowDelWrap1);nowBtnRow1.appendChild(nowSpacer1);
+    card.appendChild(nowBtnRow1);
     const row1=document.createElement('div');row1.style.cssText='display:flex;gap:10px;margin-top:1rem';
     row1.appendChild(makeBtn('Side quest done',()=>{top.subs[activeSubIdx].done=true;save(top.id);gainXP(20);showMini(celebSQDone[Math.floor(Math.random()*celebSQDone.length)]);render();},btnStyle));
     row1.appendChild(makeBtn('Skip side quest',()=>{skipSub(top,activeSubIdx);save(top.id);showMini('Side quest skipped');render();},skipStyle));
@@ -740,7 +759,26 @@ function renderActive(top){
     }
     const due=document.createElement('div');due.style.cssText='font-size:13px;color:#888;margin-bottom:.75rem';due.textContent=fmtDue(top.due);card.appendChild(due);
     if(hasSubs){const note=document.createElement('div');note.style.cssText='font-size:13px;color:#888;margin-bottom:.75rem;padding:8px 12px;background:#f5f5f4;border-radius:8px';note.textContent='All side quests complete — mark the quest done!';card.appendChild(note);}
-    card.appendChild(makeAttPanel(top));card.appendChild(makeSQWidget(top.id,'active'));
+    card.appendChild(makeAttPanel(top));
+    const nowBtnRow2=document.createElement('div');nowBtnRow2.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-top:6px;gap:4px';
+    const nowSQ2=makeSQWidget(top.id,'active');nowSQ2.style.cssText='margin-top:0;flex:0 0 auto';
+    const nowDelWrap2=document.createElement('div');nowDelWrap2.style.cssText='display:flex;align-items:center;justify-content:center;flex:1';
+    if(confirmDelete===top.id){
+      const yes=document.createElement('button');yes.className='del-confirm-yes';yes.textContent='Delete';
+      yes.onclick=()=>{deleteTask(top.id);};
+      const no=document.createElement('button');no.className='del-confirm-no';no.textContent='Never mind';
+      no.onclick=()=>{confirmDelete=null;render();};
+      const cf=document.createElement('div');cf.className='del-confirm';cf.appendChild(no);cf.appendChild(yes);
+      nowDelWrap2.appendChild(cf);
+    } else {
+      const delBtn=document.createElement('button');delBtn.className='del-btn';
+      delBtn.innerHTML='<i class="ti ti-trash" style="font-size:14px"></i>';
+      delBtn.onclick=()=>{confirmDelete=top.id;render();};
+      nowDelWrap2.appendChild(delBtn);
+    }
+    const nowSpacer2=document.createElement('div');nowSpacer2.style.cssText='flex:0 0 auto;visibility:hidden';
+    nowBtnRow2.appendChild(nowSQ2);nowBtnRow2.appendChild(nowDelWrap2);nowBtnRow2.appendChild(nowSpacer2);
+    card.appendChild(nowBtnRow2);
     const row=document.createElement('div');row.style.cssText='display:flex;gap:10px;margin-top:1rem';
     row.appendChild(makeBtn('Done',completeTop,btnStyle));
     row.appendChild(makeBtn('Skip',skipTop,skipStyle));
