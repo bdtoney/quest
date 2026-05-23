@@ -738,7 +738,7 @@ function renderActive(top){
       delBtn.onclick=()=>{confirmDelete=top.id;render();};
       nowDelWrap1.appendChild(delBtn);
     }
-    const nowSpacer1=document.createElement('div');nowSpacer1.style.cssText='flex:0 0 auto;visibility:hidden';
+    const nowSpacer1=document.createElement('button');nowSpacer1.className='add-sq-btn';nowSpacer1.style.cssText='visibility:hidden;pointer-events:none';nowSpacer1.innerHTML='+ Add side quest';
     nowBtnRow1.appendChild(nowSQ1);nowBtnRow1.appendChild(nowDelWrap1);nowBtnRow1.appendChild(nowSpacer1);
     card.appendChild(nowBtnRow1);
     const row1=document.createElement('div');row1.style.cssText='display:flex;gap:10px;margin-top:1rem';
@@ -776,7 +776,7 @@ function renderActive(top){
       delBtn.onclick=()=>{confirmDelete=top.id;render();};
       nowDelWrap2.appendChild(delBtn);
     }
-    const nowSpacer2=document.createElement('div');nowSpacer2.style.cssText='flex:0 0 auto;visibility:hidden';
+    const nowSpacer2=document.createElement('button');nowSpacer2.className='add-sq-btn';nowSpacer2.style.cssText='visibility:hidden;pointer-events:none';nowSpacer2.innerHTML='+ Add side quest';
     nowBtnRow2.appendChild(nowSQ2);nowBtnRow2.appendChild(nowDelWrap2);nowBtnRow2.appendChild(nowSpacer2);
     card.appendChild(nowBtnRow2);
     const row=document.createElement('div');row.style.cssText='display:flex;gap:10px;margin-top:1rem';
