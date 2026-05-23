@@ -187,13 +187,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     </div>
     <div id="peek-items"></div>
   </div>
-  <div id="done-earlier" style="display:none">
-    <div class="done-header">
-      <span class="done-label">Completed Earlier</span>
-      <button class="done-toggle" id="done-earlier-toggle"><i class="ti ti-chevron-up" id="done-earlier-icon"></i><span id="done-earlier-label">Collapse</span></button>
-    </div>
-    <div id="done-earlier-list"></div>
-  </div>
   <div id="later-section">
     <div id="later-header">
       <span id="later-label">LATER</span>
@@ -201,7 +194,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     </div>
     <div id="later-items"></div>
 
-  </div></div>
+  </div>
+  <div id="done-earlier" style="display:none">
+    <div class="done-header">
+      <span class="done-label">Completed Earlier</span>
+      <button class="done-toggle" id="done-earlier-toggle"><i class="ti ti-chevron-up" id="done-earlier-icon"></i><span id="done-earlier-label">Collapse</span></button>
+    </div>
+    <div id="done-earlier-list"></div>
+  </div>
+</div>
 
 <script>
 // ── Supabase REST API (no library — direct fetch) ───────────────────────────
