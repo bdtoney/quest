@@ -887,7 +887,7 @@ function renderDone(){
     if(doneRecentExpanded){
       recent.forEach((item,i)=>{
         const row=document.createElement('div');row.className='done-row';
-        const emoji=document.createElement('span');emoji.className='done-emoji';emoji.textContent=EMOJIS[i%EMOJIS.length];
+        const emoji=document.createElement('span');emoji.className='done-emoji';emoji.textContent=item.emoji||EMOJIS[i%EMOJIS.length];
         const text=document.createElement('span');text.className='done-text';text.textContent=item.text;
         row.appendChild(emoji);row.appendChild(text);recentList.appendChild(row);
       });
@@ -908,7 +908,7 @@ function renderDone(){
     if(doneEarlierExpanded){
       earlier.forEach((item,i)=>{
         const row=document.createElement('div');row.className='done-row';
-        const emoji=document.createElement('span');emoji.className='done-emoji';emoji.textContent=EMOJIS[i%EMOJIS.length];
+        const emoji=document.createElement('span');emoji.className='done-emoji';emoji.textContent=item.emoji||EMOJIS[i%EMOJIS.length];
         const text=document.createElement('span');text.className='done-text';text.textContent=item.text;
         row.appendChild(emoji);row.appendChild(text);earlierList.appendChild(row);
       });
@@ -1192,7 +1192,9 @@ function submitSQ(taskId,inputId){
 }
 function completeTop(){
   const s=sorted();if(!s.length)return;
-  const top=s[0];completed.push({text:top.text,id:top.id});
+  const top=s[0];
+  const assignedEmoji=EMOJIS[completed.length%EMOJIS.length];
+  completed.push({text:top.text,id:top.id,emoji:assignedEmoji});
   manualOrder=manualOrder.filter(id=>id!==top.id);
   dirtyIds.add(top.id);
   tasks=tasks.filter(t=>t.id!==top.id);
