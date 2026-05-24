@@ -297,7 +297,7 @@ let manualOrder=JSON.parse(localStorage.getItem(ORDER_KEY)||'null');
 let completed=JSON.parse(localStorage.getItem(DONE_KEY)||'[]');
 let dirtyIds=new Set(JSON.parse(localStorage.getItem(DIRTY_KEY)||'[]'));
 let isOnline=navigator.onLine;
-let openSQ={},editingTask=null,editingSub={},dragSrcId=null,openPanel={},peekExpanded=true,touchDragSrc=null,touchDragTarget=null,laterExpanded=true,confirmDelete=null;
+let openSQ={},editingTask=null,editingSub={},dragSrcId=null,openPanel={},peekExpanded=true,touchDragSrc=null,touchDragTarget=null,laterExpanded=true,confirmDelete=null,expandedDone=new Set();
 
 const EMOJIS=['🥳','🙌','🎊','🥇','💪','🎉','👏','🏆'];
 const celebDone=["Quest complete! +30 XP","Victory! +30 XP","Conquered! +30 XP","Legendary! +30 XP"];
@@ -908,6 +908,56 @@ function updateToggleBtn(){
 }
 let doneRecentExpanded=true,doneEarlierExpanded=true;
 
+function makeDoneCard(item,i,rerender){
+  const card=document.createElement('div');
+  card.style.cssText='border-bottom:0.5px solid rgba(0,0,0,0.06);padding:5px 0';
+  const isExpanded=expandedDone.has(item.id);
+  const hasDetails=(item.notes&&item.notes.length)||(item.links&&item.links.length)||(item.subs&&item.subs.length)||item.taskDate||item.taskTime;
+
+  // Header row: emoji + text + chevron
+  const row=document.createElement('div');row.className='done-row';row.style.cssText='border-bottom:none;padding:0;cursor:'+(hasDetails?'pointer':'default');
+  const emoji=document.createElement('span');emoji.className='done-emoji';emoji.textContent=item.emoji||EMOJIS[i%EMOJIS.length];
+  const text=document.createElement('span');text.className='done-text';text.style.flex='1';text.textContent=item.text;
+  row.appendChild(emoji);row.appendChild(text);
+  if(hasDetails){
+    const chev=document.createElement('i');chev.className=isExpanded?'ti ti-chevron-up':'ti ti-chevron-down';
+    chev.style.cssText='font-size:12px;color:#bbb;margin-left:6px;flex-shrink:0';
+    row.appendChild(chev);
+    row.onclick=()=>{if(expandedDone.has(item.id))expandedDone.delete(item.id);else expandedDone.add(item.id);rerender();};
+  }
+  card.appendChild(row);
+
+  if(isExpanded&&hasDetails){
+    const detail=document.createElement('div');detail.style.cssText='padding:6px 0 4px 26px;display:flex;flex-direction:column;gap:4px';
+    // DateTime
+    const dtStr=fmtTaskDateTime(item);
+    if(dtStr){const d=document.createElement('div');d.style.cssText='font-size:12px;color:#7F77DD';d.textContent=dtStr;detail.appendChild(d);}
+    // Side quests
+    (item.subs||[]).forEach(s=>{
+      const sr=document.createElement('div');sr.style.cssText='display:flex;align-items:center;gap:6px;font-size:12px;color:#bbb';
+      const dot=document.createElement('span');dot.style.cssText='width:6px;height:6px;border-radius:50%;background:'+(s.done?'#7F77DD':'#ddd');dot.style.flexShrink='0';dot.style.display='inline-block';
+      const st=document.createElement('span');st.style.textDecoration=s.done?'line-through':'none';st.textContent=s.text;
+      sr.appendChild(dot);sr.appendChild(st);detail.appendChild(sr);
+    });
+    // Notes
+    (item.notes||[]).forEach(n=>{
+      const nr=document.createElement('div');nr.style.cssText='font-size:12px;color:#888;display:flex;gap:5px;align-items:flex-start';
+      const ic=document.createElement('i');ic.className='ti ti-note';ic.style.cssText='font-size:12px;color:#bbb;flex-shrink:0;margin-top:1px';
+      const nt=document.createElement('span');nt.textContent=n.text;nt.style.lineHeight='1.4';
+      nr.appendChild(ic);nr.appendChild(nt);detail.appendChild(nr);
+    });
+    // Links
+    (item.links||[]).forEach(l=>{
+      const lr=document.createElement('div');lr.style.cssText='font-size:12px;display:flex;gap:5px;align-items:flex-start';
+      const ic=document.createElement('i');ic.className='ti ti-link';ic.style.cssText='font-size:12px;color:#bbb;flex-shrink:0;margin-top:1px';
+      const a=document.createElement('a');a.href=l.url;a.target='_blank';a.textContent=l.label;a.style.cssText='color:#7F77DD;text-decoration:none;word-break:break-all';
+      lr.appendChild(ic);lr.appendChild(a);detail.appendChild(lr);
+    });
+    card.appendChild(detail);
+  }
+  return card;
+}
+
 function renderDone(){
   const recent=completed.slice(-8).reverse();
   const earlier=completed.slice(0,-8).reverse();
@@ -924,12 +974,7 @@ function renderDone(){
     if(icon){icon.className=doneRecentExpanded?'ti ti-chevron-up':'ti ti-chevron-down';}
     if(lbl){lbl.textContent=doneRecentExpanded?'Collapse':'Expand';}
     if(doneRecentExpanded){
-      recent.forEach((item,i)=>{
-        const row=document.createElement('div');row.className='done-row';
-        const emoji=document.createElement('span');emoji.className='done-emoji';emoji.textContent=item.emoji||EMOJIS[i%EMOJIS.length];
-        const text=document.createElement('span');text.className='done-text';text.textContent=item.text;
-        row.appendChild(emoji);row.appendChild(text);recentList.appendChild(row);
-      });
+      recent.forEach((item,i)=>{recentList.appendChild(makeDoneCard(item,i,renderDone));});
     }
   }
 
@@ -945,12 +990,7 @@ function renderDone(){
     if(icon){icon.className=doneEarlierExpanded?'ti ti-chevron-up':'ti ti-chevron-down';}
     if(lbl){lbl.textContent=doneEarlierExpanded?'Collapse':'Expand';}
     if(doneEarlierExpanded){
-      earlier.forEach((item,i)=>{
-        const row=document.createElement('div');row.className='done-row';
-        const emoji=document.createElement('span');emoji.className='done-emoji';emoji.textContent=item.emoji||EMOJIS[i%EMOJIS.length];
-        const text=document.createElement('span');text.className='done-text';text.textContent=item.text;
-        row.appendChild(emoji);row.appendChild(text);earlierList.appendChild(row);
-      });
+      earlier.forEach((item,i)=>{earlierList.appendChild(makeDoneCard(item,i,renderDone));});
     }
   }
 }
@@ -1233,7 +1273,16 @@ function completeTop(){
   const s=sorted();if(!s.length)return;
   const top=s[0];
   const assignedEmoji=EMOJIS[completed.length%EMOJIS.length];
-  completed.push({text:top.text,id:top.id,emoji:assignedEmoji});
+  completed.push({
+    text:top.text,
+    id:top.id,
+    emoji:assignedEmoji,
+    notes:top.notes||[],
+    links:top.links||[],
+    subs:top.subs||[],
+    taskDate:top.taskDate||null,
+    taskTime:top.taskTime||null
+  });
   manualOrder=manualOrder.filter(id=>id!==top.id);
   dirtyIds.add(top.id);
   tasks=tasks.filter(t=>t.id!==top.id);
