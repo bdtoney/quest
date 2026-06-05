@@ -424,10 +424,7 @@ async function loadFromCloud(){
     // Deduplicate tasks by id
     const seenTasks=new Set();
     tasks=tasks.filter(t=>{if(seenTasks.has(t.id))return false;seenTasks.add(t.id);return true;});
-    // Delete orphaned tasks from cloud
-    dirtyFromCleanup.forEach(id=>{
-      if(currentUser&&isOnline)apiDeleteQuest(id).catch(e=>console.warn('cleanup delete:',e.message));
-    });
+
     saveLocal();
     setSyncStatus('online');
     render();
